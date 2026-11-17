@@ -1,0 +1,81 @@
+{
+  "name": "azure-launcher",
+  "version": "1.0.0",
+  "description": "Launcher for Azure Client (Legit edition only)",
+  "main": "app/main.js",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never",
+    "predist": "node tools/make-notices.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "dependencies": {
+    "electron-updater": "^6.8.11",
+    "fflate": "^0.8.3",
+    "prismarine-auth": "^3.1.1"
+  },
+  "private": true,
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "net.azureclient.launcher",
+    "productName": "Azure Launcher",
+    "files": [
+      "app/**",
+      "src/**",
+      "config/**",
+      "assets/**",
+      "package.json",
+      "!dev",
+      "!dev/**",
+      "!test/**",
+      "!**/*.test.js",
+      "!build-resources",
+      "!dist"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Azure-Launcher-Setup-${version}.${ext}",
+      "icon": "build-resources/icon.ico",
+      "signAndEditExecutable": true
+    },
+    "directories": {
+      "buildResources": "build-resources",
+      "output": "dist"
+    },
+    "asar": true,
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "include": "build-resources/installer.nsh",
+      "shortcutName": "Azure Launcher"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "sabripro6901-debug",
+      "repo": "azure-launcher",
+      "releaseType": "release"
+    },
+    "extraResources": [
+      {
+        "from": "build-resources/THIRD-PARTY-NOTICES.txt",
+        "to": "THIRD-PARTY-NOTICES.txt"
+      }
+    ]
+  }
+}

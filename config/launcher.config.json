@@ -1,0 +1,25 @@
+{
+  "minecraftVersion": "1.21.11",
+  "fabricLoader": "0.18.3",
+  "azureClientId": "4ab2cd17-5e65-4dec-adf1-ea9721ec090f",
+  "about": {
+    "publisher": "Sabrilbg (a private individual)",
+    "contactEmail": "sabripro6901@gmail.com",
+    "privacyUrl": "https://azureclient.pages.dev/privacy.html#launcher"
+  },
+  "launcherUpdate": {
+    "owner": "sabripro6901-debug",
+    "repo": "azure-launcher"
+  },
+  "updateChannel": {
+    "base": "https://hxfwmnhupkzsuxbblzax.supabase.co/storage/v1/object/public/releases"
+  },
+  "mods": [
+    {
+      "name": "Fabric API",
+      "file": "fabric-api-0.141.6+1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/6qAuTtLR/fabric-api-0.141.6%2B1.21.11.jar",
+      "sha512": "852d3682c4f353fd0ca86546af8578513e8bcf628377fa9d49c556bc59c5024c69ab56c92fc6dfba11fed19e4316a3f5636e7e07fd3d96f7043b531aef59b637"
+    }
+  ]
+}

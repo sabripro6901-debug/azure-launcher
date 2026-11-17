@@ -1,0 +1,38 @@
+/*
+ * Design tokens: every color, radius and shadow the launcher uses, taken from the in-game menu of the Azure Client mod
+ * (Theme.java and AuroraTitleScreen.java). style.css uses nothing but these variables (test/design.test.js checks it).
+ */
+:root {
+  /* Azure blue: the mod's default accent (47, 140, 255). */
+  --accent: #2f8cff;
+  /* Panels and text (Theme.PANEL_BG, TEXT, TEXT_DIM). */
+  --panel: #111116;
+  --text: #e8e8ee;
+  --text-dim: #8c8c99;
+  --text-strong: #ffffff;
+  /* Title-screen buttons as they look in the game (sampled from a screenshot of the menu): a dark blue-navy glass body,
+     and the lighter navy of the buttons lower in the menu for selected items, secondary buttons and banners. */
+  --btn: #161c2e;
+  --btn-hover: #22293a;
+  /* The same Azure blue, dimmed: the empty part of the Launch button while it installs. */
+  --accent-dim: #214e8c;
+  --btn-text: #dcdce6;
+  --name: #ede6ff;
+  /* Lines and hover wash (Theme.OUTLINE, Theme.ROW_HOVER). */
+  --outline: rgba(255, 255, 255, 0.25);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --wash: rgba(255, 255, 255, 0.094);
+  /* Status colors the mod's HUD uses. */
+  --good: #6be675;
+  --bad: #f25c5c;
+  /* Only for the confirm button of a destructive action (Delete, Stop game): nowhere else. */
+  --danger: #d6404a;
+  /* Radii (Theme.R_S, R_M, R_L) and the pill every button uses. */
+  --r-s: 4px;
+  --r-m: 8px;
+  --r-l: 12px;
+  --r-pill: 999px;
+  /* The soft shadow under panels and buttons. */
+  --shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-small: 0 3px 10px rgba(0, 0, 0, 0.4);
+}

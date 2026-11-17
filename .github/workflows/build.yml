@@ -1,0 +1,67 @@
+name: Build launcher
+
+# Builds the unsigned Windows installer of the launcher, checks the signed Azure Legit jar on the update channel
+# (signature, SHA-256, size, Legit guard), and runs the tests. This repo holds no mod source and the workflow uses
+# no secrets: the channel is public and read-only. Publishing a release is done by hand (see RELEASE.md).
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false' # unsigned build: never go looking for a certificate
+    steps:
+      # actions are pinned to a commit (the tag is only a comment)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install (exact versions from package-lock.json)
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Signed channel - signature, SHA-256, size and Legit guard of every Azure jar
+        run: node tools/verify-channel.js
+
+      - name: List the open-source licences that ship in the installer
+        run: node tools/make-notices.js
+
+      - name: Build the Windows installer (unsigned)
+        run: npx electron-builder --win nsis --x64 --publish never
+
+      - name: Check what is inside the app (no dev folder, no tests, no offline account code)
+        run: node tools/check-package.js dist/win-unpacked/resources/app.asar
+
+      - name: SHA-256 of the installer
+        shell: pwsh
+        run: Get-FileHash dist/Azure-Launcher-Setup-*.exe -Algorithm SHA256 | Format-List
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: azure-launcher-windows
+          path: |
+            dist/Azure-Launcher-Setup-*.exe
+            dist/Azure-Launcher-Setup-*.exe.blockmap
+            dist/latest.yml
+          if-no-files-found: error
