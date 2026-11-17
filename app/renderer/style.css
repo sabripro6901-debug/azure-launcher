@@ -373,3 +373,5 @@ svg.thick { stroke-width: 3.2; }
 .ilog { margin: 0; max-height: 60vh; overflow: auto; padding: 14px 16px; background: var(--panel); border: 1px solid var(--hairline); border-radius: var(--r-l); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; color: var(--text); }
 .kindbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .state-text { padding: 18px; color: var(--text-dim); }
+.itrow.queued { background: var(--wash); }
+.qtag { color: var(--accent); font-weight: 700; font-size: 13px; }

@@ -10,6 +10,7 @@ const { Vault, electronCipher } = require('../src/vault');
 const { createAuthService, AuthError, isConfigured } = require('../src/auth');
 const { launch } = require('../src/launch');
 const { fetchRelease, ensureLegitJar, azureVersions } = require('../src/channel');
+const queue = require('../src/queue');
 const { listVersions, fabricLoaderFor, fabricApiFor } = require('../src/versions');
 const { InstanceStore, InstanceError, instanceDir, ensureInstanceDir, copyInstanceDir, deleteInstanceDir } = require('../src/instances');
 const { fetchSkinPng } = require('../src/skin');
@@ -171,6 +172,18 @@ function startApp(opts = {}) {
   }
 
   // ---------- launch ----------
+  /** Resolves with the time the game wrote ready.json (it is up), or null if it exits first / takes over 3 minutes. */
+  function waitReady(gameDir, since, proc) {
+    return new Promise((resolve) => {
+      const end = Date.now() + 180000;
+      const timer = setInterval(() => {
+        let at = 0;
+        try { at = fs.statSync(path.join(gameDir, queue.DIR, 'ready.json')).mtimeMs; } catch { /* not yet */ }
+        if (at >= since) { clearInterval(timer); resolve(at); } else if (Date.now() > end || !proc || proc.exitCode !== null) { clearInterval(timer); resolve(null); }
+      }, 250);
+    });
+  }
+
   async function doLaunch() {
     if (state !== 'idle') return { ok: false, message: 'Already running.' };
     const s = settings.get();
@@ -196,10 +209,24 @@ function startApp(opts = {}) {
       const plainLog = createLogParser();
       if (s.openLogOnLaunch) send('launch:event', { type: 'openLog' });
       ensureInstanceDir(root, inst.id);
+      const gameDir = instanceDir(root, inst.id);
+      let quick = []; // after "Restart now": straight back into the same world or server
+      let rolledBack = false;
+      let pendingTiming = null;
+      let code = 0;
+      let wasStopped = false;
+      for (let round = 0; round < 4; round++) {
+      // Mod changes queued in the game (or here) are applied while the game is closed, with a rollback copy.
+      const applyStart = Date.now();
+      let batch = null;
+      try { batch = queue.apply(gameDir, path.join(gameDir, 'mods')); } catch (e) { logLine('[MODS] Could not apply the queued changes: ' + e.message); }
+      const applyMs = Date.now() - applyStart;
+      if (batch) logLine('[MODS] Applied ' + batch.done.length + ' queued change(s) in ' + applyMs + ' ms' + (batch.failed.length ? ', failed: ' + batch.failed.join('; ') : ''));
+      const startedAt = Date.now();
       const started = await launch({
         root, mc: inst.mcVersion, loader: inst.loader ? inst.loaderVersion : null, mods: inst.mods, azureJar, account,
         gameDir: instanceDir(root, inst.id),
-        ram: (inst.ram || s.ram) + 'M', jvmArgs: splitArgs(s.javaArgs), gameArgs: dev.enabled ? dev.gameArgs || [] : [],
+        ram: (inst.ram || s.ram) + 'M', jvmArgs: splitArgs(s.javaArgs), gameArgs: [...(dev.enabled ? dev.gameArgs || [] : []), ...quick],
         log: (m) => {
           send('launch:event', { type: 'status', text: m, progress: progressOf(m) });
           logLine(m);
@@ -215,14 +242,46 @@ function startApp(opts = {}) {
       setState('running');
       send('launch:event', { type: 'status', text: 'Playing', progress: null });
       if (s.closeOnLaunch && win) win.hide();
-      const code = await started.exit;
+      if (pendingTiming) {
+        // Quick restart timings, reported once the game says it is up again.
+        const t = { ...pendingTiming, applyMs, prepareMs: startedAt - pendingTiming.exitAt - applyMs };
+        waitReady(gameDir, startedAt, child).then((readyAt) => {
+          if (!readyAt) return;
+          t.startMs = readyAt - startedAt;
+          t.totalMs = readyAt - t.requestedAt;
+          logLine('[MODS] Quick restart: closing ' + t.closeMs + ' ms, applying ' + t.applyMs + ' ms, launcher ' + t.prepareMs + ' ms, game start ' + t.startMs + ' ms, total ' + t.totalMs + ' ms');
+          try { fs.writeFileSync(path.join(gameDir, queue.DIR, 'timings.json'), JSON.stringify(t, null, 2)); } catch { /* only a report */ }
+        });
+        pendingTiming = null;
+      }
+      code = await started.exit;
       child = null;
       try {
         const now = store.get(inst.id);
         if (now) store.update(inst.id, { playTime: (now.playTime || 0) + (Date.now() - playStart), lastPlayed: new Date().toISOString() });
       } catch { /* deleted meanwhile */ }
+      wasStopped = stopping;
+      // A queued change that crashes the game before it is up: roll it back once and start again.
+      if (batch && code !== 0 && !wasStopped && !rolledBack && !queue.readySince(gameDir, startedAt)) {
+        const entries = queue.rollbackBatch(batch.rollback, path.join(gameDir, 'mods'));
+        const who = queue.blame(gameDir, entries, startedAt);
+        try { fs.writeFileSync(path.join(gameDir, queue.DIR, 'applied.json'), JSON.stringify({ at: new Date().toISOString(), done: [], failed: [], crashed: who })); } catch { /* toast only */ }
+        logLine('[MODS] ' + who + ' crashed the game on start: the change was rolled back, starting again');
+        send('launch:event', { type: 'status', text: who + ' crashed the game: rolled back, starting again', progress: null });
+        rolledBack = true;
+        continue;
+      }
+      const req = !wasStopped && queue.takeRestart(gameDir, startedAt);
+      if (req) {
+        quick = queue.quickPlayArgs(req);
+        pendingTiming = { requestedAt: req.requestedAt, exitAt: Date.now(), closeMs: Date.now() - req.requestedAt };
+        logLine('[MODS] Quick restart requested' + (req.world ? ' (world ' + req.world + ')' : req.server ? ' (server ' + req.server + ')' : ''));
+        send('launch:event', { type: 'status', text: 'Restarting with your mod changes', progress: null });
+        continue;
+      }
+      break;
+      }
       send('instances:changed', { instances: store.list().map(view), selected: selectedInstance().id });
-      const wasStopped = stopping;
       stopping = false;
       if (win) win.show();
       setState('idle');
@@ -483,7 +542,8 @@ function startApp(opts = {}) {
       return { ...r, hits: r.hits.map((h) => ({ ...h, installed: have.has(h.projectId) })) };
     }));
     handle('content:categories', (kind) => contentReply(async () => ({ categories: await modrinth.categories(String(kind)) })));
-    handle('content:list', () => contentReply(async () => { const { inst, content } = contentFor(); return contentSnapshot(content, inst); }));
+    handle('content:list', () => contentReply(async () => { const { inst, content } = contentFor(); return { ...contentSnapshot(content, inst), queue: queue.read(instanceDir(rootDir(), inst.id)).map((e) => ({ id: e.id, op: e.op, name: e.name || e.file, file: e.file, oldVersion: e.oldVersion || '', newVersion: e.newVersion || '', text: queue.describe(e) })) }; }));
+    handle('content:unqueue', (id) => contentReply(async () => { notRunning(); const { inst } = contentFor(); queue.undo(instanceDir(rootDir(), inst.id), String(id)); return {}; }));
     handle('content:versions', ({ kind, projectId, all } = {}) => contentReply(async () => {
       if (kind === 'modpack') return { versions: rankVersions(await modrinth.versionsFor(String(projectId), { loader: 'fabric' }), { loader: 'fabric' }), mc: null };
       const { inst } = contentFor();
