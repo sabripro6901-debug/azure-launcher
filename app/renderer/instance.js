@@ -235,6 +235,7 @@ async function loadItems(force) {
   const r = await api.content.list();
   if (!r.ok) { ipEls.list && ipEls.list.replaceChildren(el('div', 'state-text', r.message)); return false; }
   ip.items = r.items;
+  ip.queue = r.queue || [];
   return true;
 }
 
@@ -326,7 +327,30 @@ function renderContentList() {
   if (ip.query) rows = rows.filter((it) => (it.name + ' ' + it.base + ' ' + (it.version || '')).toLowerCase().includes(ip.query));
   rows.sort((a, b) => (ip.sort === 'off' ? Number(a.enabled) - Number(b.enabled) : 0) || Number(b.locked) - Number(a.locked) || (ip.sort === 'za' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name)));
   ipEls.list.replaceChildren();
-  if (!rows.length) {
+  // Changes queued in the game's Mod Manager (or here): they apply when the game starts next.
+  for (const q of ip.queue || []) {
+    const row = el('div', 'itrow queued');
+    const proj = el('div', 'c-proj');
+    proj.append(iconNode(null, (q.name || '?').slice(0, 1).toUpperCase()));
+    const names = el('div', 'names');
+    names.append(el('span', 'rtitle', q.name), el('span', 'muted small', q.text));
+    proj.append(names);
+    const ver = el('div', 'c-ver');
+    ver.append(el('span', 'vnum', q.newVersion || q.oldVersion || '—'), el('span', 'muted small', q.file));
+    const act = el('div', 'c-act');
+    act.append(el('span', 'qtag', 'Applies on restart'));
+    const undo = el('button', 'pill small', 'Undo');
+    undo.addEventListener('click', async () => {
+      const r = await api.content.unqueue(q.id);
+      if (r && !r.ok) { toast(r.message); return; }
+      await loadItems(true);
+      renderContentList();
+    });
+    act.append(undo);
+    row.append(proj, ver, act);
+    ipEls.list.append(row);
+  }
+  if (!rows.length && !(ip.queue || []).length) {
     ipEls.list.append(el('div', 'state-text', ip.query ? 'Nothing matches “' + ip.query + '”.' : 'Nothing here yet. Use Browse content or drop files here.'));
     return;
   }

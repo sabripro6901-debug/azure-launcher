@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('azure', {
     remove: (kind, base) => ipcRenderer.invoke('content:remove', { kind: String(kind), base: String(base) }),
     check: () => ipcRenderer.invoke('content:check'),
     reveal: (kind, file) => ipcRenderer.invoke('content:reveal', { kind: String(kind), file: String(file) }),
+    unqueue: (id) => ipcRenderer.invoke('content:unqueue', String(id)),
     update: (kind, base) => ipcRenderer.invoke('content:update', { kind: String(kind), base: String(base) }),
     updateAll: () => ipcRenderer.invoke('content:update', { all: true }),
     onEvent: (cb) => on('content:event', cb),
