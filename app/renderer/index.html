@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://cdn.modrinth.com data:; font-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Azure Launcher</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand"><img src="icon.png" alt=""><span>Azure</span></div>
+    <nav>
+      <button class="nav" data-page="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 3l9 8.5"/><path d="M5.5 10v10.5h4.8v-6h3.4v6h4.8V10"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav" data-page="instances">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 21 7.6v8.8l-9 4.8-9-4.8V7.6z"/><path d="M3.2 7.8 12 12.6l8.8-4.8M12 12.6v8.4"/></svg>
+        <span>Instances</span>
+      </button>
+      <button class="nav nav-browse" data-page="browse">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><g class="needle"><path d="M15.6 8.4 13.3 13.3 8.4 15.6 10.7 10.7z"/></g></svg>
+        <span>Browse</span>
+      </button>
+      <button class="nav" data-page="settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+    <div class="side-sep"></div>
+    <div class="side-instances" id="side-instances"></div>
+    <div class="spacer"></div>
+    <button class="account-btn" id="side-account" data-page="accounts">
+      <span class="head" id="side-head"></span>
+      <span class="who"><span class="name" id="side-name">Sign in</span><span class="sub" id="side-sub">Accounts</span></span>
+    </button>
+    <div class="foot"><span id="launcher-version"></span><span class="dev-badge hidden" id="dev-badge-side">DEV</span></div>
+  </aside>
+
+  <main>
+    <section class="page" id="page-home">
+      <div class="hero" id="hero">
+        <div class="layer sky"></div>
+        <canvas class="stars" id="stars"></canvas>
+        <div class="layer clouds" data-depth="0.3"></div>
+        <div class="layer far" data-depth="0.45"></div>
+        <div class="layer mid" data-depth="0.7"></div>
+        <div class="layer near" data-depth="1"></div>
+        <div class="hero-brand">
+          <img src="icon.png" alt="">
+          <div class="hero-name">AZURE CLIENT</div>
+        </div>
+        <span class="dev-badge hidden" id="dev-badge">DEV</span>
+      </div>
+
+      <div class="cluster">
+        <div class="launch-row">
+        <div class="launch-group" id="launch-group">
+          <button class="launch" id="launch"><span class="fill" id="launch-fill"></span><span class="label" id="launch-label">Launch</span></button>
+          <button class="picker" id="picker" aria-haspopup="listbox">
+            <span class="picker-text"><span class="picker-cap">Instance</span><span class="picker-name" id="picker-name"></span></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="menu hidden" id="picker-menu" role="listbox"></div>
+        </div>
+        <button class="pill stop hidden" id="stop-game">Stop game</button>
+        </div>
+        <div class="under" id="under"></div>
+      </div>
+
+      <div class="summary">
+        <div class="cell wide"><span class="cap">Version</span><span class="val" id="sum-version"></span><span class="sub-note hidden" id="sum-note"></span></div>
+        <div class="cell"><span class="cap">Account</span><span class="val account-val"><span class="head small" id="sum-head"></span><span id="sum-account"></span></span></div>
+        <button class="pill" id="logs-open">Logs</button>
+      </div>
+    </section>
+
+    <section class="page hidden" id="page-instances">
+      <header><h1>Instances</h1><span class="row-tight"><button class="pill" id="import-mrpack">Import .mrpack</button><button class="pill accent" id="new-instance">New instance</button></span></header>
+      <div id="instance-list"></div>
+    </section>
+
+    <section class="page hidden" id="page-accounts">
+      <header><h1>Accounts</h1><button class="pill accent" id="add-account">Add account</button></header>
+      <div class="card note hidden" id="signin-off"></div>
+      <div class="card hidden" id="code-card">
+        <div class="cap">Sign in with Microsoft</div>
+        <p class="muted">Open the Microsoft page, type this code, and sign in with the account that owns Minecraft: Java Edition.</p>
+        <div class="code" id="code-value">········</div>
+        <div class="row">
+          <button class="pill accent" id="code-open">Open Microsoft page</button>
+          <button class="pill" id="code-copy">Copy code</button>
+          <button class="pill" id="code-cancel">Cancel</button>
+        </div>
+        <div class="muted waiting">Waiting for you to finish in the browser…</div>
+      </div>
+      <div class="card note error hidden" id="account-error"></div>
+      <div id="account-list"></div>
+      <div class="card empty hidden" id="account-empty">
+        <div class="empty-title">No account yet</div>
+        <p class="muted">Add a Microsoft account that owns Minecraft: Java Edition to play.</p>
+      </div>
+    </section>
+
+    <section class="page hidden" id="page-settings">
+      <header><h1>Settings</h1></header>
+      <div class="card form">
+        <label class="field">
+          <span class="cap">Memory for the game</span>
+          <div class="slider-row"><input type="range" id="set-ram" min="1024" max="16384" step="256"><span id="set-ram-value"></span></div>
+          <span class="hint">More memory helps big modpacks. Too much can slow the game down; 2–4 GB is right for most.</span>
+        </label>
+        <label class="field">
+          <span class="cap">Java arguments</span>
+          <input type="text" id="set-java" spellcheck="false" placeholder="e.g. -XX:+UseZGC">
+          <span class="hint">Extra options for the game's Java. Leave empty unless you know you need them.</span>
+        </label>
+        <div class="field">
+          <span class="cap">Game folder</span>
+          <code id="set-root"></code>
+          <div class="row"><button class="pill" id="set-root-open">Open folder</button><button class="pill" id="set-root-choose">Change…</button><button class="pill" id="set-root-reset">Use default</button></div>
+          <span class="hint">Minecraft files, Java and your instances live here. Changing it does not move what is already there.</span>
+        </div>
+        <div class="field" id="upd-field">
+          <span class="cap">Launcher updates</span>
+          <span id="upd-text" class="hint"></span>
+          <div class="row"><button class="pill" id="upd-check">Check for updates</button><button class="pill accent hidden" id="upd-install">Restart to update</button></div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="set-close"><span class="switch"></span><span>Hide the launcher while the game is running</span></label>
+        <label class="toggle"><input type="checkbox" id="set-log"><span class="switch"></span><span>Open the logs when the game launches</span></label>
+      </div>
+      <header class="sub"><h2>About</h2></header>
+      <div class="card form" id="about">
+        <div class="field"><span class="cap">Version</span><span id="about-version"></span></div>
+        <div class="field">
+          <span class="cap">Notice</span>
+          <span id="about-notice">Azure Launcher is not an official Minecraft product. It is not approved by or associated with Mojang or Microsoft.</span>
+        </div>
+        <div class="field"><span class="cap">Publisher</span><span id="about-publisher"></span></div>
+        <div class="field"><span class="cap">Contact</span><span id="about-contact"></span></div>
+        <div class="field">
+          <span class="cap">Privacy</span>
+          <span class="hint">Your sign-in is stored encrypted on this PC and is never sent to our servers.</span>
+          <div class="row"><button class="pill" id="about-privacy">Privacy page</button></div>
+        </div>
+        <div class="field">
+          <span class="cap">Open-source licenses</span>
+          <div class="row"><button class="pill" id="about-notices">Licenses of bundled software</button><button class="pill" id="about-electron">Electron</button><button class="pill" id="about-chromium">Chromium</button></div>
+          <span id="about-licfail" class="hint hidden">That file could not be opened.</span>
+        </div>
+      </div>
+    </section>
+    <section class="page hidden" id="page-instance"></section>
+  </main>
+
+  <div class="modal hidden" id="modal"><div class="dialog" id="dialog" role="dialog" aria-modal="true"></div></div>
+  <div class="scrim hidden" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head"><span>Logs</span><span class="row-tight"><button class="pill" id="log-clear">Clear</button><button class="pill" id="log-close">Close</button></span></div>
+    <pre id="log"></pre>
+  </aside>
+</div>
+<script src="content.js"></script>
+<script src="import.js"></script>
+<script src="renderer.js"></script>
+<script src="instance.js"></script>
+</body>
+</html>
