@@ -81,6 +81,7 @@ test('a packaged build cannot reach dev/: the entry passes nothing, and packagin
   assert.strictEqual(pkg.main, 'app/main.js');
   const files = pkg.build.files;
   assert.ok(files.some((f) => f === '!dev' || f === '!dev/**'), 'dev/ is not excluded from packaging');
+  assert.ok(files.includes('!dev-local/**'), 'dev-local/ is not excluded from packaging');
   assert.ok(!files.some((f) => /^dev(\/|$)/.test(f)), 'dev/ is included in packaging');
   for (const f of ['test/**', 'node_modules/electron/**']) assert.ok(files.includes('!' + f) || !files.includes(f));
   // nothing under app/ or src/ may require dev/
@@ -109,4 +110,16 @@ test('players read friendly errors; the missing app ID says exactly that', () =>
     assert.ok(m && !/AADSTS|HTTP \d|config\/|launcher\.config|client\)? ID|403|401/i.test(m), code + ': ' + m);
   }
   assert.strictEqual(playerMessage('NOT_A_CODE'), playerMessage('UNKNOWN'));
+});
+
+test('the public repo has no developer folder and no offline account: dev-local/ is ignored and never committed', () => {
+  assert.ok(read('.gitignore').split(/\r?\n/).includes('dev-local/'), 'dev-local/ is not in .gitignore');
+  const skip = new Set(['node_modules', 'dist', 'dev-local', '.git']);
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (skip.has(e.name) ? [] : e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+  const files = walk(ROOT);
+  assert.ok(!files.some((f) => path.relative(ROOT, f).split(path.sep)[0] === 'dev'), 'a dev/ folder is in the repo');
+  for (const f of files.filter((x) => /\.(js|json|md)$/.test(x) && !x.endsWith('rules.test.js') && !x.endsWith('design.test.js'))) {
+    const text = fs.readFileSync(f, 'utf8');
+    for (const word of ['OfflinePlayer', 'fake-account', 'AZURE_DEV_OFFLINE']) assert.ok(!text.includes(word), path.relative(ROOT, f) + ' contains ' + word);
+  }
 });

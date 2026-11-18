@@ -11,7 +11,7 @@ test('the updater repo in package.json (latest.yml) and config/launcher.config.j
 
 test('the installer is unsigned-safe: no secrets in the build config, dev/ and tests excluded', () => {
   const files = pkg.build.files.join(' ');
-  assert.ok(files.includes('!dev/**') && files.includes('!test/**'));
+  assert.ok(files.includes('!dev/**') && files.includes('!dev-local/**') && files.includes('!test/**'));
   assert.ok(!JSON.stringify(pkg.build).match(/password|token|secret|certificate/i));
 });
 

@@ -3,3 +3,5 @@ dist/
 *.log
 .env
 config/launcher.config.local.json
+# Local developer tools (test accounts, offline test launches): never committed
+dev-local/
