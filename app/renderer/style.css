@@ -375,3 +375,16 @@ svg.thick { stroke-width: 3.2; }
 .state-text { padding: 18px; color: var(--text-dim); }
 .itrow.queued { background: var(--wash); }
 .qtag { color: var(--accent); font-weight: 700; font-size: 13px; }
+
+/* mod check screen */
+.mc-list { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 14px; }
+.mc-row { padding: 12px 14px; border-radius: var(--r-m); border: 1px solid var(--outline); background: var(--panel); }
+.mc-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.mc-file { font-size: 12px; overflow-wrap: anywhere; }
+.mc-reasons { margin: 6px 0 0; padding-left: 18px; }
+.mc-reasons li { margin: 2px 0; }
+.mc-fixes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.mc-note { margin: 8px 0 0; font-size: 12px; }
+.mc-fabric { margin: 0 0 12px; }
+.mc-fabric summary { cursor: pointer; }
+.mc-status { min-height: 18px; }

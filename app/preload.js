@@ -11,7 +11,13 @@ const on = (channel, cb) => {
 
 contextBridge.exposeInMainWorld('azure', {
   state: () => ipcRenderer.invoke('app:state'),
-  launch: () => ipcRenderer.invoke('launch:start'),
+  launch: (opts) => ipcRenderer.invoke('launch:start', { skipCheck: !!(opts && opts.skipCheck) }),
+  modcheck: {
+    report: (session) => ipcRenderer.invoke('modcheck:report', String(session || '')),
+    fix: (session, file, index) => ipcRenderer.invoke('modcheck:fix', { session: String(session), file: String(file), index: Number(index) }),
+    fixAll: (session) => ipcRenderer.invoke('modcheck:fixAll', String(session)),
+    undo: (session) => ipcRenderer.invoke('modcheck:undo', String(session)),
+  },
   stopGame: () => ipcRenderer.invoke('launch:stop'),
   versions: { list: (opts) => ipcRenderer.invoke('versions:list', opts) },
   modpack: {

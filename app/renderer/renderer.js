@@ -242,6 +242,10 @@ api.onLaunch((e) => {
     run.error = e.message;
     run.logs = !!e.logs;
     renderHome();
+  } else if (e.type === 'modproblems') {
+    resetRun();
+    renderHome();
+    showModProblems(e.report);
   } else if (e.type === 'exit') {
     resetRun();
     if (e.code !== 0 && !e.stopped) { run.error = 'The game closed unexpectedly.'; run.logs = true; }

@@ -59,6 +59,7 @@ async function prepare({ root, mc, loader = null, mods = [], azureJar = null, ga
   const classpath = [...inst.classpath, inst.clientJar].join(sep);
   return {
     gameDir,
+    javaMajor: (inst.version.javaVersion && inst.version.javaVersion.majorVersion) || null,
     command(player, { ram = '2G', jvmArgs = [], gameArgs = [] } = {}) {
       const vars = {
         auth_player_name: player.name, auth_uuid: player.uuid.replace(/-/g, ''), auth_access_token: player.accessToken,
@@ -87,12 +88,13 @@ function redact(args, token) {
 
 /**
  * Starts the game for a verified account. Returns { child, exit } (exit resolves with the exit code).
- * opts: { root, mc, loader, mods, azureJar, gameDir, account, ram, jvmArgs, log, onLine }
+ * opts: { root, mc, loader, mods, azureJar, gameDir, account, ram, jvmArgs, log, onLine, beforeStart(prepared) }
  */
 async function launch(opts) {
   const { account, ram = '2G', jvmArgs = [], gameArgs = [], log = () => {}, onLine = () => {} } = opts;
   if (!isVerifiedAccount(account)) throw new Error('No account: sign in with a Microsoft account that owns Minecraft Java Edition first.');
   const prepared = await prepare(opts);
+  if (opts.beforeStart) await opts.beforeStart(prepared); // the mod check: may stop here with an explanation
   const cmd = prepared.command(account.player(), { ram, jvmArgs, gameArgs });
   log('Starting the game');
   const child = spawn(cmd.java, cmd.args, { cwd: cmd.cwd });
