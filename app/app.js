@@ -48,6 +48,7 @@ function startApp(opts = {}) {
   let pendingPack = null; // a .mrpack the player picked: { token, file, pack }
   let pendingImport = null; // what the player picked, waiting for their confirmation: { token, candidates }
   let modrinth = new ModrinthClient();
+  let busyJobs = 0; // downloads and installs in progress (the launcher never updates itself in the middle of one)
   const devAnswers = []; // dev gate only: paths that stand in for the next file dialogs
   const answer = () => (dev.enabled && devAnswers.length ? devAnswers.shift() : null);
   const headCache = new Map();
@@ -60,6 +61,7 @@ function startApp(opts = {}) {
   function setState(next) {
     state = next;
     send('launch:event', { type: 'state', state });
+    if (next === 'idle') setTimeout(() => selfUpdate.tryAuto(), 3000); // a waiting launcher update, once the game is closed
   }
 
   /** A failure for players: friendly text up front, the technical detail only in the log. */
@@ -75,7 +77,25 @@ function startApp(opts = {}) {
     autoUpdater: app.isPackaged ? require('electron-updater').autoUpdater : null,
     config: config.launcherUpdate, isPackaged: app.isPackaged && !dev.enabled, currentVersion: version,
     log: (m) => logLine(m), onState: (st) => send('update:event', st),
+    auto: () => settings.get().autoUpdateLauncher,
+    safeNow: () => updateSafeNow(),
+    beforeInstall: (to) => writeUpdatedNote(to),
   });
+  /** Nothing going on: no game, no sign-in, no download or install. Only then does the launcher update itself. */
+  function updateSafeNow() { return state === 'idle' && !child && !signIn && busyJobs === 0; }
+  function writeUpdatedNote(to) {
+    try { fs.writeFileSync(path.join(app.getPath('userData'), 'updated.json'), JSON.stringify({ from: version, to, at: new Date().toISOString() })); } catch { /* note only */ }
+  }
+  /** After a quiet update: which version it came from (shown once), else null. */
+  function justUpdated() {
+    const f = path.join(app.getPath('userData'), 'updated.json');
+    try {
+      const j = JSON.parse(fs.readFileSync(f, 'utf8'));
+      fs.rmSync(f, { force: true });
+      return j && j.to === version ? { from: String(j.from || ''), to: version } : null;
+    } catch { return null; }
+  }
+  let updatedNote;
 
   // ---------- the signed release (which Minecraft versions have an Azure build) ----------
   async function release() {
@@ -364,11 +384,14 @@ function startApp(opts = {}) {
   }
   const SESSION = /^s[0-9]{6,16}$/;
   async function modcheckReply(fn) {
+    busyJobs++;
     try {
       return { ok: true, ...(await fn()) };
     } catch (e) {
       logLine('[MODS] ' + String((e && e.message) || e).slice(0, 400));
       return { ok: false, message: e instanceof ModrinthError || e instanceof ContentError ? e.message : String((e && e.message) || 'Something went wrong.').slice(0, 200) };
+    } finally {
+      busyJobs--;
     }
   }
 
@@ -437,6 +460,7 @@ function startApp(opts = {}) {
   const notRunning = () => { if (state !== 'idle') throw new ContentError('RUNNING', 'Close the game first, then change what is installed.'); };
   /** Content calls answer { ok, ... } or { ok: false, code, message }: friendly text, never a crash. */
   const contentReply = async (fn) => {
+    busyJobs++;
     try {
       return { ok: true, ...(await fn()) };
     } catch (e) {
@@ -444,6 +468,8 @@ function startApp(opts = {}) {
       if (e instanceof ContentError || e instanceof InstanceError) return { ok: false, code: e.code, message: e.message };
       logLine('[CONTENT] ' + String((e && e.message) || e).slice(0, 400));
       return { ok: false, code: 'UNKNOWN', message: 'Something went wrong.' };
+    } finally {
+      busyJobs--;
     }
   };
   const contentSnapshot = (content, inst) => ({
@@ -510,7 +536,7 @@ function startApp(opts = {}) {
       state, version, dev: dev.enabled, configured: isConfigured(config),
       instances: store.list().map(view), selected: selectedInstance().id,
       accounts: auth.listAccounts(), settings: settings.get(), root: rootDir(),
-      about: aboutInfo(),
+      about: aboutInfo(), justUpdated: updatedNote === undefined ? (updatedNote = justUpdated()) : null,
     }));
     handle('launch:start', (opts) => doLaunch({ skipCheck: !!(opts && opts.skipCheck) }));
     handle('modcheck:report', (session) => modcheckReply(async () => ({ report: await modReport(selectedInstance(), { session: SESSION.test(String(session)) ? String(session) : null }) })));
@@ -787,7 +813,7 @@ function startApp(opts = {}) {
     handle('accounts:remove', (id) => { auth.remove(id); return auth.listAccounts(); });
     handle('accounts:head', (uuid) => headOf(String(uuid)));
     handle('settings:get', () => settings.get());
-    handle('settings:set', (patch) => settings.set(patch));
+    handle('settings:set', (patch) => { const r = settings.set(patch); if (patch && patch.autoUpdateLauncher === true) selfUpdate.tryAuto(); return r; });
     handle('settings:chooseFolder', async () => {
       const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] });
       return r.canceled ? null : path.resolve(r.filePaths[0]);
@@ -840,7 +866,7 @@ function startApp(opts = {}) {
     auth = createAuthService({ config, vault, log });
     registerIpc();
     createWindow();
-    if (selfUpdate.enabled) setTimeout(() => { if (state === 'idle') selfUpdate.check(); }, 15000); // quietly, a moment after start
+    if (selfUpdate.enabled) selfUpdate.start(); // a moment after start, then every 30 minutes
     if (dev.enabled && dev.onReady) dev.onReady({ win, send, app, store, settings, answerDialog: (p) => devAnswers.push(p), setModrinthBase: (base) => { modrinth = new ModrinthClient({ base, sleep: async () => {} }); } });
   });
   app.on('window-all-closed', () => app.quit());

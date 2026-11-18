@@ -18,6 +18,7 @@ function defaults() {
     closeOnLaunch: false,    // hide the launcher while the game runs
     openLogOnLaunch: false,  // open the logs drawer when the game starts
     selectedInstance: 'default',
+    autoUpdateLauncher: true, // launcher updates install themselves when nothing is running
   };
 }
 
@@ -40,6 +41,7 @@ function validate(input, base = defaults()) {
   if (Number.isFinite(i.ram)) s.ram = Math.min(BOUNDS.ram[1], Math.max(BOUNDS.ram[0], Math.round(i.ram / 256) * 256));
   if (typeof i.closeOnLaunch === 'boolean') s.closeOnLaunch = i.closeOnLaunch;
   if (typeof i.openLogOnLaunch === 'boolean') s.openLogOnLaunch = i.openLogOnLaunch;
+  if (typeof i.autoUpdateLauncher === 'boolean') s.autoUpdateLauncher = i.autoUpdateLauncher;
   if (typeof i.selectedInstance === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(i.selectedInstance)) s.selectedInstance = i.selectedInstance;
   return s;
 }

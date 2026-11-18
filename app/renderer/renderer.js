@@ -645,6 +645,7 @@ function renderSettings() {
   $('set-root').textContent = appState.root;
   renderAbout();
   $('set-close').checked = s.closeOnLaunch;
+  $('set-autoupd').checked = s.autoUpdateLauncher !== false;
   $('set-log').checked = s.openLogOnLaunch;
 }
 
@@ -661,6 +662,7 @@ $('set-ram').addEventListener('input', () => { $('set-ram-value').textContent = 
 $('set-ram').addEventListener('change', () => saveSettings({ ram: Number($('set-ram').value) }));
 $('set-java').addEventListener('change', () => saveSettings({ javaArgs: $('set-java').value }));
 $('set-close').addEventListener('change', () => saveSettings({ closeOnLaunch: $('set-close').checked }));
+$('set-autoupd').addEventListener('change', () => saveSettings({ autoUpdateLauncher: $('set-autoupd').checked }));
 $('set-log').addEventListener('change', () => saveSettings({ openLogOnLaunch: $('set-log').checked }));
 function renderAbout() {
   const a = appState.about || {};
@@ -722,6 +724,7 @@ function startHero() {
   navigate('home');
   startHero();
   showUpdate(await api.update.state());
+  if (appState.justUpdated && typeof toast === 'function') toast('Launcher updated to ' + appState.justUpdated.to + '.');
 })();
 
 
