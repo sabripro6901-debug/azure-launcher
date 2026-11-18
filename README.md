@@ -37,6 +37,10 @@ Full details: [azureclient.pages.dev/privacy](https://azureclient.pages.dev/priv
 
 Azure Launcher is not an official Minecraft product. It is not approved by or associated with Mojang or Microsoft. "Minecraft" is a trademark of Mojang Synergies AB. Minecraft's own files are downloaded from Mojang's servers; nothing of the game is included here.
 
+## License
+
+The source code is published under the [PolyForm Strict License 1.0.0](LICENSE.md): you may read it and use it for personal, noncommercial purposes, but not change, rebrand or redistribute it. The names "Azure Launcher" and "Azure Client" and the logo are reserved (see [NOTICE.md](NOTICE.md)).
+
 ## Publisher
 
 Made by **Sabrilbg** (a private individual).
