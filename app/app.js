@@ -208,6 +208,7 @@ function startApp(opts = {}) {
 
   async function doLaunch({ skipCheck = false } = {}) {
     if (state !== 'idle') return { ok: false, message: 'Already running.' };
+    if (busyJobs > 0) return { ok: false, message: 'Wait until the download or fix in progress is done.' };
     const s = settings.get();
     const inst = selectedInstance();
     setState('preparing');
@@ -577,7 +578,7 @@ function startApp(opts = {}) {
 
     handle('update:state', () => selfUpdate.state());
     handle('update:check', () => selfUpdate.check());
-    handle('update:install', () => ({ ok: selfUpdate.install() }));
+    handle('update:install', () => (updateSafeNow() ? { ok: selfUpdate.install() } : { ok: false, message: 'Close the game (and wait for downloads) first, then update.' }));
     handle('versions:list', async ({ snapshots } = {}) => {
       const rel = await release();
       try {

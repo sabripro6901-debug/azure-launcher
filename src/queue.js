@@ -94,16 +94,27 @@ function apply(gameDir, modsDir) {
         fs.renameSync(src, path.join(rollback, path.basename(src)));
         undoSteps.push({ do: 'restore', file: path.basename(src) });
       } else if (e.op === 'update') {
-        const old = inside(modsDir, e.oldFile);
+        const from = inside(staged, e.staged);
+        if (!fs.existsSync(from)) throw new Error('the downloaded update is missing'); // the old mod stays
+        // the old file may be turned off: the new one then stays off too
+        let old = inside(modsDir, e.oldFile);
+        let off = false;
+        if (!fs.existsSync(old) && fs.existsSync(old + '.disabled')) { old += '.disabled'; off = true; }
+        const dest = off ? target + '.disabled' : target;
+        if (fs.existsSync(dest) && path.resolve(dest) !== path.resolve(old)) throw new Error('a different file with that name is there');
         if (fs.existsSync(old)) {
-          fs.renameSync(old, path.join(rollback, e.oldFile));
-          undoSteps.push({ do: 'restore', file: e.oldFile });
+          fs.renameSync(old, path.join(rollback, path.basename(old)));
+          undoSteps.push({ do: 'restore', file: path.basename(old) });
         }
-        fs.renameSync(inside(staged, e.staged), target);
-        undoSteps.push({ do: 'delete', file: e.file });
+        fs.renameSync(from, dest);
+        undoSteps.push({ do: 'delete', file: path.basename(dest) });
       } else if (e.op === 'enable') {
         const off = inside(modsDir, e.file + '.disabled');
-        if (fs.existsSync(off)) { fs.renameSync(off, target); undoSteps.push({ do: 'rename', file: e.file, to: e.file + '.disabled' }); }
+        if (fs.existsSync(off)) {
+          if (fs.existsSync(target)) throw new Error('already on (a file with that name is there)');
+          fs.renameSync(off, target);
+          undoSteps.push({ do: 'rename', file: e.file, to: e.file + '.disabled' });
+        }
       } else if (e.op === 'disable') {
         if (fs.existsSync(target)) { fs.renameSync(target, inside(modsDir, e.file + '.disabled')); undoSteps.push({ do: 'rename', file: e.file + '.disabled', to: e.file }); }
       }

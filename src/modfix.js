@@ -154,7 +154,9 @@ function undo(session, ctx) {
   for (const step of [...s.steps].reverse()) {
     try {
       if (step.op === 'rename') {
-        if (fs.existsSync(step.to) && !fs.existsSync(step.from)) fs.renameSync(step.to, step.from);
+        if (!fs.existsSync(step.to)) errors.push(path.basename(step.from) + ' is no longer in ' + path.basename(path.dirname(step.to)));
+        else if (fs.existsSync(step.from)) errors.push('a file named ' + path.basename(step.from) + ' is in the way; ' + path.basename(step.to) + ' was left in ' + path.dirname(step.to));
+        else fs.renameSync(step.to, step.from);
       } else if (step.op === 'added') {
         for (const f of step.files) if (path.dirname(f) === path.resolve(ctx.modsDir)) fs.rmSync(f, { force: true }); // downloaded by this session
       } else if (step.op === 'loader') {

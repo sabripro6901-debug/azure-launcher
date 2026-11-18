@@ -11,6 +11,8 @@ const MAX_FILE = 256 * 1024 * 1024;
 const MAX_JSON = 2 * 1024 * 1024;
 const MAX_NESTED = 64 * 1024 * 1024;
 const MAX_DEPTH = 3;
+/** Most a jar and the mods bundled in it may unpack to, all together (a bad jar cannot stall every launch). */
+const MAX_UNPACK = 192 * 1024 * 1024;
 
 /** Fabric Loader itself brings these (MixinExtras since 0.15). */
 const BUILTIN_EXTRA = ['mixinextras'];
@@ -111,7 +113,7 @@ function unzipNames(data, wanted) {
 }
 
 /** One mod archive (or a bundled one): { id, version, name, provides, depends, breaks, loader, nested, error }. */
-function readMod(data, depth = 0) {
+function readMod(data, depth = 0, budget = { left: MAX_UNPACK }) {
   const out = { id: null, version: null, name: null, provides: [], depends: {}, breaks: {}, loader: null, nested: [], error: null };
   let first;
   try {
@@ -139,10 +141,15 @@ function readMod(data, depth = 0) {
   out.depends = j.depends && typeof j.depends === 'object' ? j.depends : {};
   out.breaks = j.breaks && typeof j.breaks === 'object' ? j.breaks : {};
   const jars = Array.isArray(j.jars) ? j.jars.map((x) => x && String(x.file || '')).filter((f) => f && f.endsWith('.jar') && !f.split('/').includes('..')) : [];
-  if (jars.length && depth < MAX_DEPTH) {
+  if (jars.length && depth < MAX_DEPTH && budget.left > 0) {
     try {
       const inner = unzipNames(data, (n) => jars.includes(n));
-      for (const f of jars) if (inner.got[f]) out.nested.push(readMod(inner.got[f], depth + 1));
+      for (const f of jars) {
+        if (!inner.got[f]) continue;
+        budget.left -= inner.got[f].length;
+        if (budget.left < 0) break; // too much: the rest are checked as if absent
+        out.nested.push(readMod(inner.got[f], depth + 1, budget));
+      }
     } catch { /* bundled mods unreadable: checked as if absent */ }
   }
   return out;
