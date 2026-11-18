@@ -736,5 +736,5 @@ function showUpdate(u) {
   $('upd-install').classList.toggle('hidden', u.status !== 'ready');
 }
 $('upd-check').addEventListener('click', async () => showUpdate(await api.update.check()));
-$('upd-install').addEventListener('click', () => api.update.install());
+$('upd-install').addEventListener('click', async () => { const r = await api.update.install(); if (r && !r.ok && r.message && typeof toast === 'function') toast(r.message); });
 api.update.onEvent(showUpdate);
