@@ -11,6 +11,8 @@ const { createAuthService, AuthError, isConfigured } = require('../src/auth');
 const { launch } = require('../src/launch');
 const { fetchRelease, ensureLegitJar, azureVersions } = require('../src/channel');
 const queue = require('../src/queue');
+const modcheck = require('../src/modcheck');
+const modfix = require('../src/modfix');
 const { listVersions, fabricLoaderFor, fabricApiFor } = require('../src/versions');
 const { InstanceStore, InstanceError, instanceDir, ensureInstanceDir, copyInstanceDir, deleteInstanceDir } = require('../src/instances');
 const { fetchSkinPng } = require('../src/skin');
@@ -184,7 +186,7 @@ function startApp(opts = {}) {
     });
   }
 
-  async function doLaunch() {
+  async function doLaunch({ skipCheck = false } = {}) {
     if (state !== 'idle') return { ok: false, message: 'Already running.' };
     const s = settings.get();
     const inst = selectedInstance();
@@ -207,6 +209,8 @@ function startApp(opts = {}) {
       }
       const root = rootDir();
       const plainLog = createLogParser();
+      const recent = []; // the last lines of the game's output, to explain a refused start
+      let refusedAt = 0;
       if (s.openLogOnLaunch) send('launch:event', { type: 'openLog' });
       ensureInstanceDir(root, inst.id);
       const gameDir = instanceDir(root, inst.id);
@@ -234,6 +238,19 @@ function startApp(opts = {}) {
         onLine: (raw) => {
           const line = plainLog(raw);
           if (line !== null) logLine(line.slice(0, MAX_LOG_LINE));
+          recent.push(String(raw).slice(0, 600));
+          if (recent.length > 400) recent.shift();
+          // Fabric refusing the mods then waits on its own error window: once its report is written, close it
+          if (!refusedAt && /Incompatible mods found|Some of your mods are incompatible/.test(raw)) {
+            refusedAt = Date.now();
+            setTimeout(() => { if (child) child.kill(); }, 2500);
+          }
+        },
+        beforeStart: async (prepared) => {
+          if (skipCheck || round > 0 || !inst.loader) return;
+          send('launch:event', { type: 'status', text: 'Checking your mods' });
+          const r = modcheck.check(checkArgs(inst, prepared.javaMajor));
+          if (r.problems.length) throw Object.assign(new Error('Some mods would stop the game from starting.'), { code: 'MOD_PROBLEMS' });
         },
       });
       child = started.child;
@@ -283,6 +300,14 @@ function startApp(opts = {}) {
       }
       send('instances:changed', { instances: store.list().map(view), selected: selectedInstance().id });
       stopping = false;
+      // Fabric refused this set of mods: explain it with the same screen instead of only "the game closed".
+      const refusal = code !== 0 && !wasStopped && inst.loader ? modcheck.fabricRefusal(recent) : null;
+      if (refusal) {
+        if (win) win.show();
+        setState('idle');
+        send('launch:event', { type: 'modproblems', report: await modReport(inst, { fabric: refusal, fromCrash: true }) });
+        return { ok: false, modProblems: true };
+      }
       if (win) win.show();
       setState('idle');
       send('launch:event', { type: 'exit', code, stopped: wasStopped });
@@ -291,9 +316,59 @@ function startApp(opts = {}) {
       child = null;
       if (win) win.show();
       setState('idle');
+      if (e && e.code === 'MOD_PROBLEMS') {
+        send('launch:event', { type: 'modproblems', report: await modReport(inst, {}) });
+        return { ok: false, modProblems: true };
+      }
       const err = describe(e, 'LAUNCH_FAILED');
       send('launch:event', { type: 'error', ...err });
       return { ok: false, ...err };
+    }
+  }
+
+  // ---------- mod check ----------
+  /** Java the instance's Minecraft runs on, from its installed version file (null before the first start). */
+  function javaFor(mc) {
+    try {
+      const v = JSON.parse(fs.readFileSync(path.join(rootDir(), 'versions', mc, mc + '.json'), 'utf8'));
+      return (v.javaVersion && v.javaVersion.majorVersion) || null;
+    } catch { return null; }
+  }
+  function checkArgs(inst, javaMajor) {
+    const modsDir = path.join(instanceDir(rootDir(), inst.id), 'mods');
+    const locked = (inst.mods || []).filter((m) => m.locked).map((m) => m.file);
+    if (fs.existsSync(modsDir)) for (const f of fs.readdirSync(modsDir)) if (/^(azure|aurora)-client.*\.jar$/i.test(f)) locked.push(f);
+    return { modsDir, mc: inst.mcVersion, loaderVersion: inst.loaderVersion, javaMajor: javaMajor === undefined ? javaFor(inst.mcVersion) : javaMajor, locked };
+  }
+  /** The problems screen's data: what is wrong with each mod and how to fix it. */
+  async function modReport(inst, { fabric = null, fromCrash = false, session = null } = {}) {
+    const args = checkArgs(inst);
+    const r = modcheck.check(args);
+    await modfix.withFixes(r, {
+      modsDir: args.modsDir, mc: inst.mcVersion, loaderVersion: inst.loaderVersion, client: modrinth,
+      newestLoader: () => fabricLoaderFor(inst.mcVersion),
+      fabricApiIncluded: (inst.mods || []).some((m) => m.locked && /^fabric-api/i.test(m.file)),
+    });
+    return {
+      instance: { id: inst.id, name: inst.name, mc: inst.mcVersion, loader: inst.loaderVersion },
+      problems: r.problems, fabric, fromCrash, canUndo: !!session && modfix.canUndo(instanceDir(rootDir(), inst.id), session),
+    };
+  }
+  function fixCtx(inst) {
+    const gameDir = instanceDir(rootDir(), inst.id);
+    return {
+      gameDir, modsDir: path.join(gameDir, 'mods'),
+      content: new Content({ gameDir, instance: inst, client: modrinth, log: logLine }),
+      setLoader: (v) => { const old = store.get(inst.id).loaderVersion; store.update(inst.id, { loaderVersion: v }); return old; },
+    };
+  }
+  const SESSION = /^s[0-9]{6,16}$/;
+  async function modcheckReply(fn) {
+    try {
+      return { ok: true, ...(await fn()) };
+    } catch (e) {
+      logLine('[MODS] ' + String((e && e.message) || e).slice(0, 400));
+      return { ok: false, message: e instanceof ModrinthError || e instanceof ContentError ? e.message : String((e && e.message) || 'Something went wrong.').slice(0, 200) };
     }
   }
 
@@ -437,7 +512,41 @@ function startApp(opts = {}) {
       accounts: auth.listAccounts(), settings: settings.get(), root: rootDir(),
       about: aboutInfo(),
     }));
-    handle('launch:start', () => doLaunch());
+    handle('launch:start', (opts) => doLaunch({ skipCheck: !!(opts && opts.skipCheck) }));
+    handle('modcheck:report', (session) => modcheckReply(async () => ({ report: await modReport(selectedInstance(), { session: SESSION.test(String(session)) ? String(session) : null }) })));
+    handle('modcheck:fix', ({ session, file, index } = {}) => modcheckReply(async () => {
+      notRunning();
+      if (!SESSION.test(String(session))) throw new Error('Bad session.');
+      const inst = selectedInstance();
+      const now = await modReport(inst, { session });
+      const p = now.problems.find((x) => x.file === String(file));
+      const fix = p && p.fixes[Number(index)];
+      if (!fix) throw new Error('That fix is no longer needed.');
+      await modfix.applyFix(fix, p.file, String(session), fixCtx(inst));
+      logLine('[MODS] Fix: ' + fix.label + ' (' + p.file + ')');
+      return { report: await modReport(selectedInstance(), { session }) };
+    }));
+    handle('modcheck:fixAll', (session) => modcheckReply(async () => {
+      notRunning();
+      if (!SESSION.test(String(session))) throw new Error('Bad session.');
+      // one pass: a newer loader first (it may fix several), then the best fix for each remaining mod
+      let rep = await modReport(selectedInstance(), { session });
+      const loader = rep.problems.flatMap((p) => p.fixes).find((f) => f.action === 'loader');
+      if (loader) { await modfix.applyFix(loader, '', session, fixCtx(selectedInstance())); rep = await modReport(selectedInstance(), { session }); }
+      for (const p of rep.problems) {
+        const f = modfix.preferred(p);
+        if (!f || f.action === 'loader') continue;
+        try { await modfix.applyFix(f, p.file, session, fixCtx(selectedInstance())); logLine('[MODS] Fix: ' + f.label + ' (' + p.file + ')'); } catch (e) { logLine('[MODS] Fix failed for ' + p.file + ': ' + e.message); }
+      }
+      return { report: await modReport(selectedInstance(), { session }) };
+    }));
+    handle('modcheck:undo', (session) => modcheckReply(async () => {
+      notRunning();
+      if (!SESSION.test(String(session))) throw new Error('Bad session.');
+      const n = modfix.undo(String(session), fixCtx(selectedInstance()));
+      logLine('[MODS] Undid ' + n + ' fix step(s)');
+      return { report: await modReport(selectedInstance(), { session }) };
+    }));
     handle('launch:stop', () => { if (child) { stopping = true; child.kill(); return true; } return false; });
 
     handle('update:state', () => selfUpdate.state());
