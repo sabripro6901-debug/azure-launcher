@@ -71,3 +71,10 @@ test('the private key is never in the repo', () => {
     assert.ok(!fs.readFileSync(f, 'utf8').includes('PRIVATE KEY-----'), f + ' holds a private key');
   }
 });
+
+test('the launcher has its update key built in (public key only)', () => {
+  const txt = fs.readFileSync(path.join(__dirname, '..', 'config', 'launcher-update-key.txt'), 'utf8');
+  const key = crypto.createPublicKey({ key: Buffer.from(txt.trim(), 'base64'), format: 'der', type: 'spki' });
+  assert.strictEqual(key.asymmetricKeyType, 'ed25519');
+  assert.ok(!/PRIVATE/.test(txt));
+});
