@@ -59,3 +59,45 @@ test('a damaged instance list is kept aside, not overwritten by the default', ()
   assert.match(fs.readFileSync(path.join(dir, kept[0]), 'utf8'), /my-world-1a2b/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('a list that is only locked for a moment (virus scanner) is read, not set aside', () => {
+  const dir = tmp();
+  const file = path.join(dir, 'instances.json');
+  new InstanceStore(file, SEED).create({ name: 'Kept', mcVersion: '1.20.1', loaderVersion: '0.16.0', mods: [], azure: false });
+  const real = fs.readFileSync;
+  let fails = 2;
+  fs.readFileSync = (f, ...a) => {
+    if (f === file && fails-- > 0) { const e = new Error('EBUSY: resource busy or locked'); e.code = 'EBUSY'; throw e; }
+    return real(f, ...a);
+  };
+  try {
+    assert.deepStrictEqual(new InstanceStore(file, SEED).list().map((i) => i.name), ['Azure Client 1.21.11', 'Kept']);
+  } finally { fs.readFileSync = real; }
+  assert.deepStrictEqual(fs.readdirSync(dir).filter((f) => f.includes('.broken-')), []);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('a list still locked after the retries is never overwritten by the default', () => {
+  const dir = tmp();
+  const file = path.join(dir, 'instances.json');
+  new InstanceStore(file, SEED).create({ name: 'Kept', mcVersion: '1.20.1', loaderVersion: '0.16.0', mods: [], azure: false });
+  const before = fs.readFileSync(file, 'utf8');
+  const real = fs.readFileSync;
+  fs.readFileSync = (f, ...a) => { if (f === file) { const e = new Error('EBUSY'); e.code = 'EBUSY'; throw e; } return real(f, ...a); };
+  try {
+    new InstanceStore(file, SEED);
+  } finally { fs.readFileSync = real; }
+  assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('a list with the wrong shape is kept aside, not overwritten', () => {
+  const dir = tmp();
+  const file = path.join(dir, 'instances.json');
+  fs.writeFileSync(file, '{"instances": {"my-world-1a2b": {}}}');
+  new InstanceStore(file, SEED);
+  const kept = fs.readdirSync(dir).filter((f) => f.startsWith('instances.json.broken-'));
+  assert.strictEqual(kept.length, 1);
+  assert.match(fs.readFileSync(path.join(dir, kept[0]), 'utf8'), /my-world-1a2b/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

@@ -9,7 +9,7 @@ const path = require('node:path');
 const { download } = require('./net');
 const { bestVersion, fileOf, FABRIC_API_ID } = require('./modrinth');
 const { readModInfo, readPackInfo } = require('./modmeta');
-const { writeJsonAtomic, setAsideBroken } = require('./atomic');
+const { writeJsonAtomic, readJsonSafe } = require('./atomic');
 
 const KINDS = {
   mod: { dir: 'mods', ext: '.jar', label: 'mod' },
@@ -48,13 +48,9 @@ class Content {
   }
 
   #load() {
-    try {
-      const m = JSON.parse(fs.readFileSync(this.manifestPath, 'utf8'));
-      return m && typeof m.items === 'object' ? m : { items: {} };
-    } catch {
-      setAsideBroken(this.manifestPath); // missing, or damaged: kept aside, never overwritten
-      return { items: {} };
-    }
+    // damaged: kept aside as <file>.broken-<time>; missing or locked: empty for now
+    const r = readJsonSafe(this.manifestPath, (m) => m && typeof m.items === 'object' && !Array.isArray(m.items));
+    return r.value || { items: {} };
   }
 
   save() {

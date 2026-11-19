@@ -46,8 +46,7 @@ function write(gameDir, list) {
   const f = path.join(dirOf(gameDir), 'queue.json');
   if (!list.length) { fs.rmSync(f, { force: true }); return; }
   fs.mkdirSync(path.dirname(f), { recursive: true });
-  fs.writeFileSync(f + '.tmp', JSON.stringify({ version: 1, changes: list }, null, 2));
-  fs.renameSync(f + '.tmp', f);
+  writeJsonAtomic(f, { version: 1, changes: list });
 }
 
 function describe(e) {

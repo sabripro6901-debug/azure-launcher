@@ -42,9 +42,7 @@ class Vault {
     this.#check();
     fs.mkdirSync(this.dir, { recursive: true });
     const file = this.#file(name);
-    const tmp = file + '.tmp';
-    fs.writeFileSync(tmp, this.cipher.encrypt(JSON.stringify(value)));
-    fs.renameSync(tmp, file);
+    require('./atomic').writeFileAtomic(file, this.cipher.encrypt(JSON.stringify(value)));
   }
 
   get(name) {
