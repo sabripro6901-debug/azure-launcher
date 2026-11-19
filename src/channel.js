@@ -70,9 +70,7 @@ function readState(dir) {
 }
 
 function writeState(dir, state) {
-  const tmp = path.join(dir, STATE + '.part');
-  fs.writeFileSync(tmp, JSON.stringify(state, null, 2));
-  fs.renameSync(tmp, path.join(dir, STATE));
+  require('./atomic').writeJsonAtomic(path.join(dir, STATE), state);
 }
 
 /** The jar that last passed every check for this Minecraft version, if it is still there and still clean; else null. */

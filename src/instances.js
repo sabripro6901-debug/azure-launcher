@@ -5,7 +5,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { writeJsonAtomic, setAsideBroken } = require('./atomic');
+const { writeJsonAtomic, setAsideBroken, readJsonSafe } = require('./atomic');
 
 const RAM_MIN = 1024;
 const RAM_MAX = 32768;
@@ -49,20 +49,19 @@ class InstanceStore {
   /** seed: the instance created on first run (the default Azure instance). */
   constructor(file, seed) {
     this.file = file;
-    let saved = null;
-    try {
-      saved = JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch {
-      setAsideBroken(file); // first run, or a damaged file: kept as instances.json.broken-<time>, never overwritten
-    }
+    // A damaged list is kept as instances.json.broken-<time>; a list another program holds locked is left alone.
+    const r = readJsonSafe(file, (v) => v && Array.isArray(v.instances));
+    this.unreadable = r.state === 'unreadable';
+    const saved = r.value;
     this.items = Array.isArray(saved && saved.instances) ? saved.instances.filter((i) => i && /^[a-z0-9-]{1,40}$/.test(i.id)) : [];
     if (this.items.length === 0 && seed) {
       this.items = [{ id: 'default', ram: null, lastPlayed: null, created: new Date().toISOString(), ...seed }];
-      this.#save();
+      if (!this.unreadable) this.#save(); // never write the default over a list that was only locked
     }
   }
 
   #save() {
+    if (this.unreadable) { setAsideBroken(this.file); this.unreadable = false; } // keep a copy of the list we couldn't read
     writeJsonAtomic(this.file, { instances: this.items });
   }
 
