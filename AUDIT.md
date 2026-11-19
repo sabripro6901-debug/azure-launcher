@@ -52,7 +52,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* play time is not saved, "Restart now" from the in-game Mod Manager and the crash rollback stop working, and a waiting launcher update installs mid-session.
   *Fix:* while a game runs, closing the window hides it (with a one-time note) and the launcher quits after the game ends.
 
-- [ ] **M6. Natives are re-extracted into a shared folder on every start.** `src/install.js:124-130`, folder `versions/<mc>/natives` shared by every instance of that version.
+- [x] **M6. Natives are re-extracted into a shared folder on every start.** *(Done: a native file already there with the same bytes is left alone, so a second start (or a running game of the same version holding the files) causes no rewrite and no lock error; a missing or different one is written. `test/safepath.test.js`.)* `src/install.js:124-130`, folder `versions/<mc>/natives` shared by every instance of that version.
   *Player:* with a game of the same version still open (or an antivirus holding a DLL) the start fails with a generic "The game couldn't start."
   *Fix:* extract only missing or changed files; skip files that are in use when they are already identical.
 

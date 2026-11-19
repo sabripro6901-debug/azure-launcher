@@ -127,9 +127,19 @@ function dedupeLibraries(libs) {
 function extractNatives(jar, dir) {
   const files = unzipSync(new Uint8Array(fs.readFileSync(jar)), { filter: (f) => /\.(dll|so|dylib|jnilib)$/i.test(f.name) });
   fs.mkdirSync(dir, { recursive: true });
+  let written = 0;
   for (const [name, data] of Object.entries(files)) {
-    fs.writeFileSync(path.join(dir, path.basename(name)), data); // flat, basename only: no path from the zip is trusted
+    const dest = path.join(dir, path.basename(name)); // flat, basename only: no path from the zip is trusted
+    // Already there with the same bytes: leave it (AUDIT M6). A game of the same version that is still running holds
+    // these files open, so rewriting them would fail; only a missing or different file is written.
+    try {
+      const st = fs.statSync(dest);
+      if (st.size === data.length && Buffer.compare(fs.readFileSync(dest), Buffer.from(data)) === 0) continue;
+    } catch { /* not there yet */ }
+    fs.writeFileSync(dest, data);
+    written++;
   }
+  return written;
 }
 
 /**
@@ -196,4 +206,4 @@ async function installWith(root, id, log, cache) {
   return { version: v, classpath, clientJar, nativesDir, assetsDir: path.join(root, 'assets'), assetIndexId: ai.id, logConfig, mc };
 }
 
-module.exports = { install, loadVersion, normalizeArguments, ruleAllows, mavenPath, mergeVersions, dedupeLibraries, libraryFiles, osName };
+module.exports = { extractNatives, install, loadVersion, normalizeArguments, ruleAllows, mavenPath, mergeVersions, dedupeLibraries, libraryFiles, osName };
