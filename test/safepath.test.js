@@ -109,3 +109,21 @@ test('M4: a saved Fabric profile is used without asking the server; a missing or
     assert.deepStrictEqual(net.asked, [url], 'damaged: fetched again');
   } finally { net.restore(); }
 });
+
+test('M6: natives are written once; a second start leaves them alone (a running game holds them open)', () => {
+  const { zipSync, strToU8 } = require('fflate');
+  const { extractNatives } = require('../src/install');
+  const root = tmp();
+  const jar = path.join(root, 'lwjgl-natives-windows.jar');
+  fs.writeFileSync(jar, zipSync({ 'windows/x64/org/lwjgl/lwjgl.dll': strToU8('dll bytes'), 'META-INF/MANIFEST.MF': strToU8('x') }));
+  const dir = path.join(root, 'natives');
+  assert.strictEqual(extractNatives(jar, dir), 1);
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'lwjgl.dll'), 'utf8'), 'dll bytes');
+  const real = fs.writeFileSync;
+  fs.writeFileSync = (f, ...a) => { if (String(f).endsWith('.dll')) { const e = new Error('EBUSY: resource busy or locked'); e.code = 'EBUSY'; throw e; } return real(f, ...a); };
+  try {
+    assert.strictEqual(extractNatives(jar, dir), 0, 'nothing rewritten, so a locked file is no problem');
+  } finally { fs.writeFileSync = real; }
+  fs.writeFileSync(path.join(dir, 'lwjgl.dll'), 'old');
+  assert.strictEqual(extractNatives(jar, dir), 1, 'a different file is replaced');
+});
