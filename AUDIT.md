@@ -90,7 +90,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
 
 - [x] **L3. Half downloads are left behind.** *(Done: a download that fails for good removes its `.part` file. `test/net.test.js`.)* `src/net.js:49-50`: when the stream fails, `dest.part` is not removed (it is overwritten on the next try).
 
-- [ ] **L4. Some IPC handlers throw instead of answering.** `app/app.js:813-814` (`accounts:select`/`remove` with an unknown id), `:595` (`instances:update` without a patch).
+- [x] **L4. Some IPC handlers throw instead of answering.** *(Done: choosing or removing an account answers with the list and a message the page shows; editing an instance without details no longer throws. `test/app.test.js` (source check).)* `app/app.js:813-814` (`accounts:select`/`remove` with an unknown id), `:595` (`instances:update` without a patch).
   *Player:* a rare "Error invoking remote method" in the console; the click does nothing.
   *Fix:* answer `{ ok:false, message }` like the other handlers.
 
