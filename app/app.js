@@ -28,7 +28,7 @@ const { createLogParser, progressOf } = require('./logfmt');
 const { devOptions } = require('./devgate');
 const { createSelfUpdater } = require('../src/selfupdate');
 const { verifyLauncherUpdate } = require('../src/updatesig');
-const { playerMessage, pointsToLogs } = require('./messages');
+const { playerMessage, pointsToLogs, classify } = require('./messages');
 
 const RENDERER = path.join(__dirname, 'renderer', 'index.html');
 const MAX_LOG_LINE = 2000;
@@ -83,7 +83,7 @@ function startApp(opts = {}) {
 
   /** A failure for players: friendly text up front, the technical detail only in the log. */
   function describe(e, fallback) {
-    const code = e instanceof AuthError || e instanceof InstanceError ? e.code : fallback;
+    const code = e instanceof AuthError || e instanceof InstanceError ? e.code : classify(e, fallback);
     const detail = String((e && e.message) || e).slice(0, 600);
     logLine('[' + code + '] ' + detail);
     return { code, message: e instanceof InstanceError ? e.message : playerMessage(code), logs: pointsToLogs(code) };

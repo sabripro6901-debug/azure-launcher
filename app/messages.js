@@ -11,11 +11,32 @@ const TEXT = {
   SIGN_IN_CANCELLED: 'Sign-in was cancelled or timed out. Try again.',
   NETWORK: "Can't reach Microsoft or Minecraft. Check your internet connection.",
   LAUNCH_FAILED: "The game couldn't start.",
+  DISK_FULL: "There isn't enough free space on the disk. Free up some space (a few GB), then press Play again.",
+  FILE_IN_USE: 'A game file is in use by another program (often the game itself, or a virus scanner). Close the game, wait a moment, then press Play again.',
+  NO_PERMISSION: "Azure Launcher isn't allowed to write to the game folder. Choose another game folder in Settings, or check the folder's permissions.",
+  DOWNLOAD_FAILED: "A download didn't finish. Check your internet connection, then press Play again: what is already downloaded is kept.",
+  DOWNLOAD_DAMAGED: 'A downloaded file was damaged and has been thrown away. Press Play again to download it again.',
+  SERVER_DOWN: "Mojang's or Fabric's download servers aren't answering right now. Try again in a few minutes.",
+  VERSION_UNAVAILABLE: "This Minecraft version (or its Fabric version) can't be downloaded. Pick another version for this instance.",
   UNKNOWN: 'Something went wrong.',
 };
 
 /** Errors that point to the logs (the page adds an "Open the logs" link under them). */
-const WITH_LOGS = new Set(['LAUNCH_FAILED', 'UNKNOWN']);
+const WITH_LOGS = new Set(['LAUNCH_FAILED', 'UNKNOWN', 'VERSION_UNAVAILABLE']);
+
+/** A clear reason for a failed install or start, from the error (AUDIT M7); fallback when nothing matches. */
+function classify(e, fallback = 'LAUNCH_FAILED') {
+  const code = String((e && e.code) || '');
+  const m = String((e && e.message) || e || '');
+  if (code === 'ENOSPC' || /ENOSPC|no space left|not enough space/i.test(m)) return 'DISK_FULL';
+  if (['EBUSY', 'ETXTBSY'].includes(code) || /EBUSY|resource busy|being used by another process/i.test(m)) return 'FILE_IN_USE';
+  if (['EPERM', 'EACCES', 'EROFS'].includes(code) || /EPERM|EACCES|EROFS|operation not permitted|permission denied/i.test(m)) return 'NO_PERMISSION';
+  if (/^Wrong sha(1|256|512) for|SHA-256 differs|Bad hash file/i.test(m)) return 'DOWNLOAD_DAMAGED';
+  if (/HTTP 5\d\d|HTTP 429/.test(m)) return 'SERVER_DOWN';
+  if (/Mojang has no|HTTP 404 for https:\/\/meta\.fabricmc\.net|has no client download/i.test(m)) return 'VERSION_UNAVAILABLE';
+  if (/ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|timeout|stalled|terminated|socket hang up/i.test(m + ' ' + code)) return 'DOWNLOAD_FAILED';
+  return fallback;
+}
 
 function pointsToLogs(code) {
   return WITH_LOGS.has(code);
@@ -25,4 +46,4 @@ function playerMessage(code) {
   return TEXT[code] || TEXT.UNKNOWN;
 }
 
-module.exports = { playerMessage, pointsToLogs, TEXT };
+module.exports = { playerMessage, pointsToLogs, classify, TEXT };
