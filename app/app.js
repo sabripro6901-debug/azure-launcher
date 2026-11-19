@@ -26,6 +26,7 @@ const { version } = require('../src/version');
 const { createLogParser, progressOf } = require('./logfmt');
 const { devOptions } = require('./devgate');
 const { createSelfUpdater } = require('../src/selfupdate');
+const { verifyLauncherUpdate } = require('../src/updatesig');
 const { playerMessage, pointsToLogs } = require('./messages');
 
 const RENDERER = path.join(__dirname, 'renderer', 'index.html');
@@ -48,6 +49,8 @@ function startApp(opts = {}) {
   });
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'launcher.config.json'), 'utf8'));
   const releaseKey = fs.readFileSync(path.join(__dirname, '..', 'config', 'release-key.txt'), 'utf8');
+  const updateKeyFile = path.join(__dirname, '..', 'config', 'launcher-update-key.txt');
+  const updateKey = fs.existsSync(updateKeyFile) ? fs.readFileSync(updateKeyFile, 'utf8') : ''; // none: every update is refused
   let win = null;
   let settings;
   let auth;
@@ -92,6 +95,7 @@ function startApp(opts = {}) {
     auto: () => settings.get().autoUpdateLauncher,
     safeNow: () => updateSafeNow(),
     beforeInstall: (to) => writeUpdatedNote(to),
+    verify: (to, files) => verifyLauncherUpdate({ owner: config.launcherUpdate.owner, repo: config.launcherUpdate.repo, version: to, files, keyBase64: updateKey }),
   });
   /** Nothing going on: no game, no sign-in, no download or install. Only then does the launcher update itself. */
   function updateSafeNow() { return state === 'idle' && !child && !signIn && busyJobs === 0; }
