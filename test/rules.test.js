@@ -93,3 +93,13 @@ test('the Legit guard runs before any jar is installed', () => {
   }
   assert.ok(!fs.existsSync(path.join(game2, 'mods')) || fs.readdirSync(path.join(game2, 'mods')).length === 0);
 });
+
+test('L6: uninstall asks before deleting data, never during an update or a silent run, default No', () => {
+  const nsh = fs.readFileSync(path.join(__dirname, '..', 'build-resources', 'installer.nsh'), 'utf8');
+  const body = nsh.slice(nsh.indexOf('!macro customUnInstall'));
+  assert.ok(body.indexOf('${isUpdated}') > -1 && body.indexOf('${isUpdated}') < body.indexOf('MessageBox'), 'an update skips the question');
+  assert.ok(body.indexOf('IfSilent skipAsk') < body.indexOf('MessageBox'));
+  assert.match(body, /MB_DEFBUTTON2/, 'No is the default');
+  assert.ok(body.indexOf('RMDir') > body.indexOf('IDYES wipe'), 'data is only deleted after Yes');
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).build.nsis.deleteAppDataOnUninstall, false);
+});
