@@ -18,7 +18,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* after a crash or a power cut every instance except the default one is gone from the list (the folders and worlds are still on disk but not shown).
   *Fix:* write to `file.tmp` then rename (as `src/vault.js:45` and `src/queue.js:48` already do), keep one `.bak`, and read the `.bak` when the main file is damaged.
 
-- [ ] **H3. Two launchers can run at the same time.** No `app.requestSingleInstanceLock()` anywhere (`app/main.js`, `app/app.js:857`). Both write the same settings, instances, vault and mod queue, and each can start a game.
+- [x] **H3. Two launchers can run at the same time.** *(Done: `app.requestSingleInstanceLock()` before anything starts; a second start quits and brings the open window to the front. Source test in `test/app.test.js`; not run as two real windows.)* No `app.requestSingleInstanceLock()` anywhere (`app/main.js`, `app/app.js:857`). Both write the same settings, instances, vault and mod queue, and each can start a game.
   *Player:* double-clicking the shortcut twice opens two windows; both can press Play; settings or accounts changed in one are overwritten by the other; mod changes can be applied twice.
   *Fix:* single-instance lock; a second start focuses the open window instead.
 

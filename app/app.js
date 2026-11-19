@@ -34,6 +34,18 @@ const RELEASE_TTL = 5 * 60 * 1000;
 
 function startApp(opts = {}) {
   const dev = devOptions(opts, { isPackaged: app.isPackaged, env: process.env.AZURE_DEV });
+  // One launcher at a time (AUDIT H3): two would write the same instance list and settings and download into the
+  // same folders. Starting it again brings the open window to the front instead.
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+    return;
+  }
+  app.on('second-instance', () => {
+    if (!win || win.isDestroyed()) return;
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  });
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'launcher.config.json'), 'utf8'));
   const releaseKey = fs.readFileSync(path.join(__dirname, '..', 'config', 'release-key.txt'), 'utf8');
   let win = null;

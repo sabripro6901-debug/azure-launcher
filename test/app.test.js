@@ -192,3 +192,15 @@ test('a newer signed jar replaces the old one only after it passed every check',
     server.close();
   }
 });
+
+test('only one launcher runs at a time; starting it again shows the open window (AUDIT H3)', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'app.js'), 'utf8');
+  const start = src.indexOf('function startApp(');
+  const lock = src.indexOf('app.requestSingleInstanceLock()', start);
+  assert.ok(lock > start, 'startApp takes the single-instance lock');
+  assert.ok(lock < src.indexOf('app.whenReady()', start), 'the lock is taken before anything is opened or written');
+  assert.match(src.slice(lock, lock + 200), /app\.quit\(\);\s*return;/, 'a second launcher quits at once');
+  const second = src.slice(src.indexOf("app.on('second-instance'"), src.indexOf("app.on('second-instance'") + 300);
+  assert.match(second, /win\.show\(\)/);
+  assert.match(second, /win\.focus\(\)/);
+});
