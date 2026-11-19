@@ -85,7 +85,7 @@ function renderRail() {
   for (const i of appState.instances) {
     const b = el('button', 'rail' + (i.id === open ? ' active' : ''));
     b.title = i.name + ' · ' + i.loader + ' ' + i.mcVersion;
-    b.append(instIcon(i), el('span', 'rail-name', i.name));
+    b.append(instIcon(i), rawEl('span', 'rail-name', i.name));
     b.addEventListener('click', () => openInstance(i.id));
     host.append(b);
   }
@@ -194,7 +194,7 @@ function renderHeader() {
   });
   pic.append(picBtn);
   const title = el('div', 'ititle');
-  title.append(el('h1', '', i.name));
+  title.append(rawEl('h1', '', i.name));
   const meta = el('div', 'imeta');
   const part = (icon, text) => { const s = el('span', 'imeta-part'); s.append(svgIcon(icon), el('span', '', text)); return s; };
   meta.append(part(ICONS.tag, (i.fabric ? 'Fabric ' : 'Minecraft ') + i.mcVersion), el('span', 'dot', '•'), part(ICONS.timer, playText(i.playTime)), el('span', 'dot', '•'), part(ICONS.clock, lastPlayedText(i.lastPlayed)));
@@ -333,10 +333,10 @@ function renderContentList() {
     const proj = el('div', 'c-proj');
     proj.append(iconNode(null, (q.name || '?').slice(0, 1).toUpperCase()));
     const names = el('div', 'names');
-    names.append(el('span', 'rtitle', q.name), el('span', 'muted small', q.text));
+    names.append(rawEl('span', 'rtitle', q.name), el('span', 'muted small', q.text));
     proj.append(names);
     const ver = el('div', 'c-ver');
-    ver.append(el('span', 'vnum', q.newVersion || q.oldVersion || '—'), el('span', 'muted small', q.file));
+    ver.append(rawEl('span', 'vnum', q.newVersion || q.oldVersion || '—'), rawEl('span', 'muted small', q.file));
     const act = el('div', 'c-act');
     act.append(el('span', 'qtag', 'Applies on restart'));
     const undo = el('button', 'pill small', 'Undo');
@@ -362,7 +362,7 @@ function contentRow(it) {
   const proj = el('div', 'c-proj');
   proj.append(iconNode(it.icon || (it.locked && /azure/i.test(it.name) ? 'icon.png' : null), (it.name || '?').slice(0, 1).toUpperCase()));
   const names = el('div', 'names');
-  names.append(el('span', 'rtitle', it.name));
+  names.append(rawEl('span', 'rtitle', it.name));
   const src = it.locked ? 'Included with Azure' : it.source === 'modrinth' ? 'Modrinth' : 'Uploaded file';
   names.append(el('span', 'muted small', ONE_KIND[it.kind] + ' · ' + src));
   proj.append(names);
@@ -478,7 +478,7 @@ async function renderWorldsTab() {
     const card = el('div', 'wcard');
     card.append(iconNode(w.icon, (w.name || '?').slice(0, 1).toUpperCase()));
     const names = el('div', 'names');
-    names.append(el('span', 'rtitle', w.name), el('span', 'muted small', lastPlayedText(w.played)));
+    names.append(rawEl('span', 'rtitle', w.name), el('span', 'muted small', lastPlayedText(w.played)));
     const open = el('button', 'pill small', 'Open folder');
     open.addEventListener('click', () => api.instances.openWorld(ip.id, w.name));
     card.append(names, open);

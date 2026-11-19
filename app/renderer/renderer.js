@@ -18,6 +18,19 @@ const gb = (mb) => (mb / 1024).toFixed(2).replace(/\.?0+$/, '') + ' GB';
 const instance = () => appState.instances.find((i) => i.id === appState.selected) || appState.instances[0];
 const selectedAccount = () => (appState.accounts || []).find((a) => a.selected) || null;
 
+/** Puts text into a fixed element; a name (isName) is marked never to translate, our own text is translated. */
+function setNameText(node, text, isName) {
+  if (isName) node.dataset.raw = ''; else delete node.dataset.raw;
+  node.textContent = text;
+}
+
+/** An element showing a name the player or a mod author chose: never translated (AUDIT M8). */
+function rawEl(tag, cls, text) {
+  const e = el(tag, cls, text);
+  e.dataset.raw = '';
+  return e;
+}
+
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -93,14 +106,14 @@ function renderHome() {
   const inst = instance();
   const acc = selectedAccount();
   const signinOff = !appState.configured;
-  $('picker-name').textContent = inst.name;
+  setNameText($('picker-name'), inst.name, true);
   $('sum-version').textContent = 'Minecraft ' + inst.mcVersion + ' · ' + inst.loader + (inst.azure ? ' · Azure' : '');
   const note = $('sum-note');
   note.textContent = inst.azure ? '' : 'Azure features not available on this version';
   note.classList.toggle('hidden', inst.azure);
-  $('sum-account').textContent = acc ? acc.name : 'Not signed in';
+  setNameText($('sum-account'), acc ? acc.name : 'Not signed in', !!acc);
   setHead($('sum-head'), acc);
-  $('side-name').textContent = acc ? acc.name : 'Sign in';
+  setNameText($('side-name'), acc ? acc.name : 'Sign in', !!acc);
   setHead($('side-head'), acc);
   $('launcher-version').textContent = 'Azure Launcher ' + appState.version;
   $('dev-badge').classList.toggle('hidden', !appState.dev);
@@ -189,7 +202,7 @@ function renderPicker() {
   const menu = $('picker-menu');
   menu.replaceChildren();
   for (const i of appState.instances) {
-    const b = el('button', i.id === appState.selected ? 'on' : '', i.name);
+    const b = rawEl('button', i.id === appState.selected ? 'on' : '', i.name);
     b.addEventListener('click', async () => { menu.classList.add('hidden'); await applyInstances(await api.instances.select(i.id)); });
     menu.append(b);
   }
@@ -297,7 +310,7 @@ function renderInstances() {
       if (i.id !== appState.selected) await applyInstances(await api.instances.select(i.id));
     });
     const top = el('div', 'top');
-    top.append(el('div', 'title', i.name));
+    top.append(rawEl('div', 'title', i.name));
     const more = el('button', 'more', '⋯');
     more.title = 'More';
     more.addEventListener('click', (e) => {
@@ -595,7 +608,7 @@ function renderAccounts(list) {
     const head = el('span', 'head');
     setHead(head, a);
     const who = el('div', 'who');
-    who.append(el('div', 'name', a.name), el('div', 'uuid', a.uuid));
+    who.append(rawEl('div', 'name', a.name), rawEl('div', 'uuid', a.uuid));
     card.append(head, who);
     if (a.selected) card.append(el('span', 'badge', 'Playing as'));
     else {
@@ -647,6 +660,8 @@ function renderSettings() {
   $('set-close').checked = s.closeOnLaunch;
   $('set-autoupd').checked = s.autoUpdateLauncher !== false;
   $('set-log').checked = s.openLogOnLaunch;
+  $('set-lang').value = s.language || 'system';
+  setLanguage(s.language || 'system');
 }
 
 async function saveSettings(patch) {
@@ -666,6 +681,7 @@ $('set-java').addEventListener('change', () => saveSettings({ javaArgs: $('set-j
 $('set-close').addEventListener('change', () => saveSettings({ closeOnLaunch: $('set-close').checked }));
 $('set-autoupd').addEventListener('change', () => saveSettings({ autoUpdateLauncher: $('set-autoupd').checked }));
 $('set-log').addEventListener('change', () => saveSettings({ openLogOnLaunch: $('set-log').checked }));
+$('set-lang').addEventListener('change', () => saveSettings({ language: $('set-lang').value }));
 function renderAbout() {
   const a = appState.about || {};
   $('about-version').textContent = 'Azure Launcher ' + appState.version;

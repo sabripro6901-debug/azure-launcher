@@ -42,7 +42,7 @@ function renderModProblems(report, busyText, errorText) {
     for (const p of problems) {
       const row = el('div', 'mc-row');
       const head = el('div', 'mc-head');
-      head.append(el('strong', '', p.name), el('span', 'muted mc-file', p.file + (p.version ? ' · ' + p.version : '')));
+      head.append(rawEl('strong', '', p.name), rawEl('span', 'muted mc-file', p.file + (p.version ? ' · ' + p.version : '')));
       row.append(head);
       const ul = el('ul', 'mc-reasons');
       for (const r of p.reasons) ul.append(el('li', '', r.text));

@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { writeJsonAtomic, readJsonSafe } = require('./atomic');
+const { writeJsonAtomic, readJsonSafe, setAsideBroken } = require('./atomic');
 
 /** 4 GB on a PC with 16 GB or more (Windows reports a "16 GB" PC as about 15.9), otherwise 2 GB. */
 function defaultRam(totalBytes = os.totalmem()) {
@@ -20,6 +20,7 @@ function defaults() {
     openLogOnLaunch: false,  // open the logs drawer when the game starts
     selectedInstance: 'default',
     autoUpdateLauncher: true, // launcher updates install themselves when nothing is running
+    language: 'system',      // 'system' (follows Windows), 'en' or 'fr' (AUDIT M8)
   };
 }
 
@@ -44,6 +45,7 @@ function validate(input, base = defaults()) {
   if (typeof i.closeOnLaunch === 'boolean') s.closeOnLaunch = i.closeOnLaunch;
   if (typeof i.openLogOnLaunch === 'boolean') s.openLogOnLaunch = i.openLogOnLaunch;
   if (typeof i.autoUpdateLauncher === 'boolean') s.autoUpdateLauncher = i.autoUpdateLauncher;
+  if (['system', 'en', 'fr'].includes(i.language)) s.language = i.language;
   if (typeof i.selectedInstance === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(i.selectedInstance)) s.selectedInstance = i.selectedInstance;
   return s;
 }
@@ -53,7 +55,9 @@ class SettingsStore {
     this.file = file;
     let saved = {};
     // damaged: kept aside as settings.json.broken-<time>; missing or locked: defaults for now
-    saved = readJsonSafe(file, (v) => v && typeof v === 'object' && !Array.isArray(v)).value || {};
+    const r = readJsonSafe(file, (v) => v && typeof v === 'object' && !Array.isArray(v));
+    this.unreadable = r.state === 'unreadable';
+    saved = r.value || {};
     this.data = validate(saved);
   }
 
@@ -62,6 +66,7 @@ class SettingsStore {
   set(patch) {
     this.data = validate(patch, this.data);
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
+    if (this.unreadable) { setAsideBroken(this.file); this.unreadable = false; } // keep a copy of what we couldn't read
     writeJsonAtomic(this.file, this.data);
     return this.get();
   }
