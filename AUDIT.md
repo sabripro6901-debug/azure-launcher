@@ -48,7 +48,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* on a flaky connection Play fails at "Fabric profile" even though nothing changed.
   *Fix:* keep the saved profile and use it when the fetch fails; check the id against `^[A-Za-z0-9._-]+$`. (Sign-in still needs the internet: see Q1.)
 
-- [ ] **M5. Closing the launcher window while playing quits the launcher.** `app/app.js:873` (`window-all-closed` → `app.quit()`), the game is a piped child (`src/launch.js:100`).
+- [x] **M5. Closing the launcher window while playing quits the launcher.** *(Done: `app/background.js`: closing the window during a game (or while it is being prepared) hides it and shows a tray icon (Open Azure Launcher / Close the launcher when the game ends); the game is never stopped; the launcher closes by itself once the game has exited, or stays if opened again from the tray. The hide-while-playing setting also gets the tray icon. `test/background.test.js`. Real click-through with a running game: with M12.)* `app/app.js:873` (`window-all-closed` → `app.quit()`), the game is a piped child (`src/launch.js:100`).
   *Player:* play time is not saved, "Restart now" from the in-game Mod Manager and the crash rollback stop working, and a waiting launcher update installs mid-session.
   *Fix:* while a game runs, closing the window hides it (with a one-time note) and the launcher quits after the game ends.
 

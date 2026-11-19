@@ -201,6 +201,5 @@ test('only one launcher runs at a time; starting it again shows the open window 
   assert.ok(lock < src.indexOf('app.whenReady()', start), 'the lock is taken before anything is opened or written');
   assert.match(src.slice(lock, lock + 200), /app\.quit\(\);\s*return;/, 'a second launcher quits at once');
   const second = src.slice(src.indexOf("app.on('second-instance'"), src.indexOf("app.on('second-instance'") + 300);
-  assert.match(second, /win\.show\(\)/);
-  assert.match(second, /win\.focus\(\)/);
+  assert.match(second, /background\.showWindow\(\)/); // shows, restores and focuses it (test/background.test.js)
 });
