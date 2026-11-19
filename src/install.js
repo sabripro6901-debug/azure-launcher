@@ -128,6 +128,7 @@ function dedupeLibraries(libs) {
 }
 
 function extractNatives(jar, dir) {
+  if (fs.statSync(jar).size > 200 * 1024 * 1024) throw new Error('Refused an oversized natives jar: ' + path.basename(jar)); // (AUDIT L10)
   const files = unzipSync(new Uint8Array(fs.readFileSync(jar)), { filter: (f) => /\.(dll|so|dylib|jnilib)$/i.test(f.name) });
   fs.mkdirSync(dir, { recursive: true });
   let written = 0;
