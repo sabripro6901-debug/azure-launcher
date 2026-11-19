@@ -40,6 +40,15 @@ would fail. In the mod repo (`aurora-client`):
 Leave the other keys as they are (`minecraftVersion`, `fabricLoader`, `updateChannel.base`, `mods`).
 Also set the same owner/repo in `package.json` under `build.publish` (`owner`, `repo`). `npm test` fails if the two differ.
 `config/release-key.txt` is the public key of your release channel; do not change it.
+`config/launcher-update-key.txt` is the public key launcher updates are checked against; do not change it either
+(installed launchers only accept updates signed with the matching private key).
+
+### Launcher update key (done once, 2026-11-19)
+
+`node tools/sign-update.js keygen` made the key pair. The private key is `%USERPROFILE%\.azure-launcher-update-key`
+on this PC only: never in this repo, in GitHub (not even as an Actions secret), in CI or in any upload. **Keep an
+offline backup of it** (a USB stick kept somewhere safe): without it no launcher update can ever be signed again,
+and installed launchers would need a manual reinstall. Running `keygen` again refuses to replace it.
 
 ## 4. Create the GitHub repo and push (launcher only)
 
@@ -60,10 +69,14 @@ installer, checks what is inside the app, and uploads the installer as a build a
 
 1. Set `version` in `package.json` (first release: `0.1.0` is fine; each later one must be higher or nobody updates).
 2. `git commit -am "Release 0.1.0"`, then `git tag v0.1.0`, then `git push origin main v0.1.0`.
-3. When the workflow for the tag is green, download the artifact `azure-launcher-windows`.
-4. GitHub -> Releases -> Draft a new release for tag `v0.1.0`. Attach all three files:
-   `Azure-Launcher-Setup-0.1.0.exe`, `Azure-Launcher-Setup-0.1.0.exe.blockmap`, `latest.yml`. Publish it as a normal release (not a pre-release, not a draft).
-   The launcher updates itself from these three files; without `latest.yml` nobody gets the update.
+3. When the workflow for the tag is green, download the artifact `azure-launcher-windows` and unzip it into a folder.
+4. Sign it on this PC: `node tools/sign-update.js sign <that folder>`. It writes `launcher-update.json` and
+   `launcher-update.json.sig` next to the installer (it signs the installer's version and SHA-256 with the private key).
+5. GitHub -> Releases -> Draft a new release for tag `v0.1.0`. Attach all five files:
+   `Azure-Launcher-Setup-0.1.0.exe`, `Azure-Launcher-Setup-0.1.0.exe.blockmap`, `latest.yml`, `launcher-update.json`,
+   `launcher-update.json.sig`. Publish it as a normal release (not a pre-release, not a draft).
+   The launcher updates itself from these files: without `latest.yml` nobody gets the update, and without the two
+   signed files (or with an installer that isn't the signed one) every launcher refuses it.
 
 ## 7. Try it like a player
 
@@ -74,5 +87,5 @@ installer, checks what is inside the app, and uploads the installer as a build a
 ## Later
 
 - Code signing (removes the SmartScreen warning): buy a certificate, then add it as a GitHub secret of **this** repo only and tell electron-builder to use it. Not needed for a first release.
-- Next launcher release: bump `version`, tag, push the tag, attach the three files. Installed launchers pick it up on their own and install it when closed.
+- Next launcher release: bump `version`, tag, push the tag, download the artifact, sign it (`node tools/sign-update.js sign <folder>`), attach the five files. Installed launchers pick it up on their own, check the signature, and install it when closed.
 - Next Azure (mod) release: step 1 only. Launchers fetch the new Legit jar from the signed channel at launch.

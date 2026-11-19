@@ -5,3 +5,9 @@ dist/
 config/launcher.config.local.json
 # Local developer tools (test accounts, offline test launches): never committed
 dev-local/
+# Signing keys never belong here (the launcher update key lives in %USERPROFILE% only)
+*.pem
+*.key
+.azure-launcher-update-key
+launcher-update.json
+launcher-update.json.sig
