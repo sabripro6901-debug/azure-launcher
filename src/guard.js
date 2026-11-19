@@ -34,6 +34,13 @@ const BANNED_PREFIXES = ['META-INF/jars/', 'com/aurora/client/lyrics/LrcLib', 'c
   'com/aurora/client/lyrics/SkyLyrics', 'com/aurora/client/lyrics/SyncClock', 'assets/aurora/lyrics/', 'assets/aurora/font/lyrics'];
 // The only mixin configs the public jar may list.
 const ALLOWED_MIXINS = new Set(['aurora.mixins.json']);
+// Our own sounds (made from scratch), by exact name and SHA-256. Any other .ogg is refused: no Minecraft (Mojang)
+// audio is shipped (AUDIT M1, same list as the mod repo's tools/check_legit_jar.py OWN_SOUNDS).
+const OWN_SOUNDS = new Map([
+  ['assets/aurora/sounds/white_hole_beat.ogg', 'dcc72b706d1e42e2e40e89c8da57969e57f6792910ddaea3ff51f284c0851298'],
+]);
+const ARCHIVE = /\.(zip|mrpack|jar)$/i;
+const MAX_DEPTH = 3;
 
 function bannedByHash(name) {
   if (BANNED_NAME_HASHES.has(sha(name))) return true;
@@ -56,6 +63,35 @@ function hasBannedWord(text, seen) {
   return false;
 }
 
+function checkSound(name, data, where) {
+  const want = OWN_SOUNDS.get(name);
+  if (!want) return 'sound not on the own-sounds list: ' + where + name;
+  if (crypto.createHash('sha256').update(data).digest('hex') !== want) return 'sound changed since it was listed: ' + where + name;
+  return null;
+}
+
+/** Checks every file of an opened zip; archives inside (.zip, .mrpack, .jar) are opened and checked the same way. */
+function checkEntries(files, where, depth, problems, seen) {
+  for (const [name, data] of Object.entries(files)) {
+    if (bannedByHash(name) || BANNED_NAMES.has(name) || BANNED_PREFIXES.some((p) => name.startsWith(p))) problems.push('banned file: ' + where + name);
+    if (name.endsWith('/')) continue;
+    if (/\.ogg$/i.test(name)) {
+      const bad = checkSound(name, data, where);
+      if (bad) problems.push(bad);
+    }
+    if (ARCHIVE.test(name)) {
+      if (depth >= MAX_DEPTH) { problems.push('archives nested too deep: ' + where + name); continue; }
+      let inner;
+      try { inner = unzipSync(data); } catch { problems.push('unreadable archive inside: ' + where + name); continue; }
+      checkEntries(inner, where + name + '!/', depth + 1, problems, seen);
+      continue;
+    }
+    const text = Buffer.from(data).toString('latin1').toLowerCase();
+    if (hasBannedWord(text, seen)) problems.push('banned text in: ' + where + name);
+    if (text.includes('lrclib')) problems.push("text 'lrclib' (the lyrics service) in: " + where + name);
+  }
+}
+
 /** Returns a list of problems (empty = this is a clean public jar). */
 function checkLegitJar(jarPath) {
   const problems = [];
@@ -65,14 +101,7 @@ function checkLegitJar(jarPath) {
   } catch (e) {
     return ['not a readable jar: ' + e.message];
   }
-  const seen = new Set();
-  for (const [name, data] of Object.entries(files)) {
-    if (bannedByHash(name) || BANNED_NAMES.has(name) || BANNED_PREFIXES.some((p) => name.startsWith(p))) problems.push('banned file: ' + name);
-    if (name.endsWith('/')) continue;
-    const text = Buffer.from(data).toString('latin1').toLowerCase();
-    if (hasBannedWord(text, seen)) problems.push('banned text in: ' + name);
-    if (text.includes('lrclib')) problems.push("text 'lrclib' (the lyrics service) in: " + name);
-  }
+  checkEntries(files, '', 0, problems, new Set());
   const metaRaw = files['fabric.mod.json'];
   if (!metaRaw) {
     problems.push('no fabric.mod.json');
@@ -88,4 +117,4 @@ function checkLegitJar(jarPath) {
   return problems;
 }
 
-module.exports = { checkLegitJar };
+module.exports = { checkLegitJar, OWN_SOUNDS };
