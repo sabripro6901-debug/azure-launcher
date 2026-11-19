@@ -236,3 +236,13 @@ test('M9: the game folder is a full path, and it cannot change while a game runs
   assert.match(h, /refused:/);
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', 'renderer.js'), 'utf8'), /if \(saved && saved\.refused\) \{ toast\(saved\.refused\)/);
 });
+
+test('M13: the instance in use (not the one selected now) can never be deleted while a game runs', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'app.js'), 'utf8');
+  const launch = src.slice(src.indexOf('async function doLaunch('), src.indexOf('async function doLaunch(') + 600);
+  assert.match(launch, /runningId = inst\.id;\s*setState\('preparing'\)/, 'the launch remembers which instance it uses');
+  const del = src.slice(src.indexOf("handle('instances:delete'"), src.indexOf("handle('instances:delete'") + 400);
+  assert.match(del, /state !== 'idle' && runningId === String\(id\)/);
+  assert.ok(!/selectedInstance\(\)\.id === String\(id\)/.test(del), 'no longer compares with the selected instance');
+  assert.match(src, /if \(next === 'idle'\) runningId = null;/);
+});

@@ -77,7 +77,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Fix:* `listAccounts` returns `[]` with a flag; the Accounts page explains it.
 
 - [ ] **M12. Versions other than 1.21.11 are not tested.** Nothing exercises 1.13, 1.16, 1.20 or the newest version's install (argument formats, natives classifiers, Java 8/16/17/21 selection).
-- [ ] **M13. A running instance can be deleted.** `instances:select` has no running check, and the delete guard (`app/app.js:602`) compares against the selected instance, not the running one. Select another instance while playing, then delete the running one: its folder is wiped under the game. *(Found by the independent review.)*
+- [x] **M13. A running instance can be deleted.** *(Done: the launch remembers which instance it uses; deleting that one is refused until the game has closed, whichever instance is selected meanwhile. `test/app.test.js` (source check).)* `instances:select` has no running check, and the delete guard (`app/app.js:602`) compares against the selected instance, not the running one. Select another instance while playing, then delete the running one: its folder is wiped under the game. *(Found by the independent review.)*
   *Player:* an instance on one of these versions might not start.
   *Fix:* recorded version JSONs for each and a test that `prepare()` builds the right Java, classpath, natives and arguments (no game start, no account).
 
