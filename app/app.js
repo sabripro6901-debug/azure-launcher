@@ -88,8 +88,10 @@ function startApp(opts = {}) {
   const rootDir = () => path.resolve(settings.get().gameRoot || path.join(app.getPath('userData'), 'data'));
   const logLine = (line) => send('launch:event', { type: 'log', line });
 
+  let runningId = null; // the instance being prepared or played (AUDIT M13: never deleted while in use)
   function setState(next) {
     state = next;
+    if (next === 'idle') runningId = null;
     send('launch:event', { type: 'state', state });
     if (next === 'idle') setTimeout(() => selfUpdate.tryAuto(), 3000); // a waiting launcher update, once the game is closed
   }
@@ -242,6 +244,7 @@ function startApp(opts = {}) {
     if (busyJobs > 0) return { ok: false, message: 'Wait until the download or fix in progress is done.' };
     const s = settings.get();
     const inst = selectedInstance();
+    runningId = inst.id;
     setState('preparing');
     send('launch:event', { type: 'status', text: 'Checking your account', clear: true });
     try {
@@ -630,7 +633,8 @@ function startApp(opts = {}) {
       return { created: copy.id };
     }));
     handle('instances:delete', (id) => instanceReply(() => {
-      if (state !== 'idle' && selectedInstance().id === String(id)) throw new InstanceError('BUSY', 'Stop the game before deleting this instance.');
+      // the running instance, whichever is selected now (the player may have picked another one meanwhile)
+      if (state !== 'idle' && runningId === String(id)) throw new InstanceError('BUSY', 'Stop the game before deleting this instance.');
       const next = store.remove(String(id));
       deleteInstanceDir(rootDir(), String(id));
       if (settings.get().selectedInstance === String(id)) settings.set({ selectedInstance: next });
