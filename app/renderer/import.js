@@ -47,7 +47,7 @@ async function runImport(paths) {
       row.append(iconNode(c.icon, (c.name || '?').slice(0, 1).toUpperCase()));
       const body = el('div', 'rbody');
       const head = el('div', 'rhead');
-      head.append(el('span', 'rtitle', c.name), el('span', 'muted', c.version));
+      head.append(rawEl('span', 'rtitle', c.name), rawEl('span', 'muted', c.version));
       body.append(head);
       const tags = el('div', 'tags');
       if (c.kind) tags.append(el('span', 'tag', (c.folder ? 'Folder · ' : '') + KIND_LABEL[c.kind]));
@@ -81,7 +81,7 @@ async function runImport(paths) {
       refreshCounts();
       const msg = 'Added ' + res.added.length + (res.added.length === 1 ? ' file' : ' files') + (res.skipped.length ? ' · skipped ' + res.skipped.length : '');
       { const k = visibleKind(); if (k) cp[k].status.textContent = msg; }
-      if (res.skipped.length) toast(res.skipped.map((s) => s.name + ': ' + s.reason).join('\n'));
+      if (res.skipped.length) toast(res.skipped.map((s) => s.name + ': ' + tr(s.reason)).join('\n'));
     } },
   ]);
   refresh();

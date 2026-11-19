@@ -124,6 +124,11 @@
           <div class="row"><button class="pill" id="set-root-open">Open folder</button><button class="pill" id="set-root-choose">Change…</button><button class="pill" id="set-root-reset">Use default</button></div>
           <span class="hint">Minecraft files, Java and your instances live here. Changing it does not move what is already there.</span>
         </div>
+        <div class="field">
+          <span class="cap">Language</span>
+          <select id="set-lang"><option value="system">Same as Windows</option><option value="en">English</option><option value="fr">Français</option></select>
+          <span class="hint">Language of the launcher. "Same as Windows" follows your system language.</span>
+        </div>
         <div class="field" id="upd-field">
           <span class="cap">Launcher updates</span>
           <span id="upd-text" class="hint"></span>
@@ -164,6 +169,7 @@
     <pre id="log"></pre>
   </aside>
 </div>
+<script src="i18n.js"></script>
 <script src="content.js"></script>
 <script src="import.js"></script>
 <script src="renderer.js"></script>

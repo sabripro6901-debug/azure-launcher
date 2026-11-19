@@ -60,7 +60,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* no idea what to do.
   *Fix:* map these codes to clear messages ("Your disk is full…", "Close the game or program using … and try again", "Can't reach Mojang…").
 
-- [ ] **M8. No French text.** `app/renderer/index.html:2` (`lang="en"`), every string is English in the renderer files.
+- [x] **M8. No French text.** *(Done: French as a second language. `app/renderer/i18n.js` translates the window's texts (a French dictionary plus patterns for texts with numbers or names) as they appear; names chosen by players or mod authors are marked never to translate (`rawEl`); dates follow the language. Settings has Language: Same as Windows (default) / English / Français; the tray menu follows it. Checked by the independent review; the real window is checked by the maintainer. `test/i18n.test.js`.)* `app/renderer/index.html:2` (`lang="en"`), every string is English in the renderer files.
   *Player:* French players get an English-only launcher (the Azure Client mod itself is translated).
   *Fix:* a small string table (en, fr) with the language picked from the system and a Settings choice; tests that every key exists in both.
 

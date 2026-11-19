@@ -52,8 +52,21 @@ function startApp(opts = {}) {
   const background = createBackground({
     Tray, Menu, nativeImage, iconPath: path.join(__dirname, 'renderer', 'icon.png'),
     getWin: () => win, isBusy: () => state !== 'idle' || !!child, quit: () => app.quit(),
-    onFirstHide: (tray) => { if (tray.displayBalloon) tray.displayBalloon({ title: 'Azure Launcher', content: 'The game keeps running. The launcher closes by itself when the game ends.' }); },
+    onFirstHide: (tray) => { if (tray.displayBalloon) tray.displayBalloon({ title: 'Azure Launcher', content: mainText('The game keeps running. The launcher closes by itself when the game ends.') }); },
+    text: (s) => mainText(s),
   });
+  // The few texts the main process shows itself (tray, notification), in the player's language (AUDIT M8).
+  const MAIN_FR = {
+    'Azure Launcher (closes when the game ends)': 'Azure Launcher (se ferme à la fin du jeu)',
+    'Open Azure Launcher': 'Ouvrir Azure Launcher',
+    'Close the launcher when the game ends': 'Fermer le launcher à la fin du jeu',
+    'The game keeps running. The launcher closes by itself when the game ends.': 'Le jeu continue. Le launcher se fermera tout seul à la fin du jeu.',
+  };
+  function mainText(s) {
+    const l = settings ? settings.get().language : 'system';
+    const fr = l === 'fr' || (l !== 'en' && /^fr/i.test(app.getLocale() || ''));
+    return fr && MAIN_FR[s] ? MAIN_FR[s] : s;
+  }
   let settings;
   let auth;
   let store;
@@ -839,6 +852,7 @@ function startApp(opts = {}) {
         return { ...settings.set(rest), refused: 'Close the game and wait for downloads to finish before changing the game folder.' };
       }
       const r = settings.set(patch);
+      if (patch && patch.language) background.refresh(); // the tray menu in the new language
       if (patch && patch.autoUpdateLauncher === true) selfUpdate.tryAuto();
       return r;
     });

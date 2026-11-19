@@ -3,7 +3,7 @@
 // hides, a tray icon keeps the launcher reachable, and the launcher closes by itself once the game has exited.
 // Electron's Tray, Menu and nativeImage are passed in (fakes in the tests).
 
-function createBackground({ Tray, Menu, nativeImage, iconPath, getWin, isBusy, quit, onFirstHide = () => {} }) {
+function createBackground({ Tray, Menu, nativeImage, iconPath, getWin, isBusy, quit, onFirstHide = () => {}, text = (s) => s }) {
   let tray = null;
   let closeWhenDone = false; // the player closed the window during a game: quit once it ends
   let quitting = false;
@@ -21,11 +21,11 @@ function createBackground({ Tray, Menu, nativeImage, iconPath, getWin, isBusy, q
 
   function refresh() {
     if (!tray) return;
-    tray.setToolTip(closeWhenDone ? 'Azure Launcher (closes when the game ends)' : 'Azure Launcher');
+    tray.setToolTip(closeWhenDone ? text('Azure Launcher (closes when the game ends)') : 'Azure Launcher');
     tray.setContextMenu(Menu.buildFromTemplate([
-      { label: 'Open Azure Launcher', click: showWindow },
+      { label: text('Open Azure Launcher'), click: showWindow },
       { type: 'separator' },
-      { label: 'Close the launcher when the game ends', type: 'checkbox', checked: closeWhenDone, click: (item) => { closeWhenDone = !!item.checked; refresh(); } },
+      { label: text('Close the launcher when the game ends'), type: 'checkbox', checked: closeWhenDone, click: (item) => { closeWhenDone = !!item.checked; refresh(); } },
     ]));
   }
 
@@ -76,7 +76,7 @@ function createBackground({ Tray, Menu, nativeImage, iconPath, getWin, isBusy, q
     if (tray) { tray.destroy(); tray = null; }
   }
 
-  return { onWindowClose, onHiddenForGame, onGameDone, showWindow, destroyTray, closesWhenDone: () => closeWhenDone, hasTray: () => !!tray };
+  return { onWindowClose, onHiddenForGame, onGameDone, showWindow, destroyTray, refresh, closesWhenDone: () => closeWhenDone, hasTray: () => !!tray };
 }
 
 module.exports = { createBackground };

@@ -1,6 +1,6 @@
 'use strict';
 // Dates and numbers follow the language of the UI (the page's own language, else the system one).
-const UI_LANG = document.documentElement.lang || navigator.language || 'en';
+var UI_LANG = window.AZURE_UI_LANG || navigator.language || 'en'; // set again by i18n.js when the language changes
 // Mods, Resource Packs and Shaders pages: browse Modrinth for the selected instance, and manage what is installed.
 // Loaded before renderer.js; it uses the helpers defined there (el, $, api, appState, openDialog, navigate ...).
 
@@ -116,7 +116,7 @@ function refreshChips() {
   for (const kind of Object.keys(cp)) {
     const st = cp[kind];
     if (kind === 'modpack') st.chip.replaceChildren(el('span', 'cap', 'Creates a new instance'), el('span', 'muted', 'Fabric modpacks'));
-    else st.chip.replaceChildren(el('span', 'cap', 'Instance'), el('span', 'val', inst.name), el('span', 'muted', 'Minecraft ' + inst.mcVersion + ' · ' + inst.loader));
+    else st.chip.replaceChildren(el('span', 'cap', 'Instance'), rawEl('span', 'val', inst.name), el('span', 'muted', 'Minecraft ' + inst.mcVersion + ' · ' + inst.loader));
   }
 }
 
@@ -241,8 +241,12 @@ function resultCard(kind, h) {
   card.append(iconNode(h.icon, h.title.slice(0, 1).toUpperCase()));
   const body = el('div', 'rbody');
   const head = el('div', 'rhead');
-  head.append(el('span', 'rtitle', h.title), el('span', 'muted', 'by ' + h.author));
-  body.append(head, el('div', 'rdesc', h.description));
+  const title = el('span', 'rtitle', h.title);
+  const desc = el('div', 'rdesc', h.description);
+  title.dataset.raw = '';
+  desc.dataset.raw = ''; // other people's text: never translated (AUDIT M8)
+  head.append(title, el('span', 'muted', 'by ' + h.author));
+  body.append(head, desc);
   const tags = el('div', 'tags');
   tags.append(el('span', 'tag', compact(h.downloads) + ' downloads'));
   for (const c of h.categories.slice(0, 3)) tags.append(el('span', 'tag dim', c));
@@ -362,7 +366,7 @@ async function versionDialog(kind, h, done) {
       if (!isPack) tags.append(el('span', v.compatible ? 'tag dim' : 'tag warn', v.compatible ? 'Minecraft ' + inst.mcVersion : 'For ' + (gv || 'another version')));
       else if (gv) tags.append(el('span', 'tag dim', 'Minecraft ' + gv));
       body.append(tags);
-      if (v.name && v.name !== v.number) body.append(el('div', 'meta', v.name));
+      if (v.name && v.name !== v.number) body.append(rawEl('div', 'meta', v.name));
       row.append(body);
       const b = el('button', 'pill' + (v.best ? ' accent' : ''), 'Install');
       b.disabled = !v.safe;
@@ -421,7 +425,7 @@ function renderInstalled(kind) {
     row.append(iconNode(it.icon, (it.name || '?').slice(0, 1).toUpperCase()));
     const body = el('div', 'rbody');
     const head = el('div', 'rhead');
-    head.append(el('span', 'rtitle', it.name), el('span', 'muted', it.version));
+    head.append(rawEl('span', 'rtitle', it.name), rawEl('span', 'muted', it.version));
     body.append(head);
     const tags = el('div', 'tags');
     if (it.locked) tags.append(el('span', 'tag azure', 'Included'));
