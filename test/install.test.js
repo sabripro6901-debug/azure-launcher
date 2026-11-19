@@ -76,3 +76,15 @@ test('old versions (1.13) list a library twice: the jar and its per-OS natives; 
   const files = kept.flatMap(libraryFiles);
   assert.ok(files.some((f) => f.natives && f.onlyNatives), 'the native classifier jar for this OS must be listed');
 });
+
+test('M12: a library listed once for macOS and once for other systems keeps the one for this system (1.16.5 GLFW)', () => {
+  const { dedupeLibraries, libraryFiles } = require('../src/install');
+  const art = (v) => ({ downloads: { artifact: { path: 'org/lwjgl/lwjgl-glfw/' + v + '/lwjgl-glfw-' + v + '.jar', url: 'https://libraries.minecraft.net/x', sha1: '0'.repeat(40) } } });
+  const libs = [
+    { name: 'org.lwjgl:lwjgl-glfw:3.2.1', rules: [{ action: 'allow', os: { name: 'osx' } }], ...art('3.2.1') },
+    { name: 'org.lwjgl:lwjgl-glfw:3.2.2', rules: [{ action: 'allow' }, { action: 'disallow', os: { name: 'osx' } }], ...art('3.2.2') },
+  ];
+  const files = dedupeLibraries(libs).flatMap(libraryFiles).map((f) => f.path);
+  if (process.platform === 'darwin') assert.deepStrictEqual(files, ['org/lwjgl/lwjgl-glfw/3.2.1/lwjgl-glfw-3.2.1.jar']);
+  else assert.deepStrictEqual(files, ['org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2.jar']);
+});
