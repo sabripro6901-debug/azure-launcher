@@ -3,6 +3,9 @@
 // - Only a packaged launcher updates, and only when config.launcherUpdate names a real repo (not the placeholder).
 // - electron-updater downloads the installer named in latest.yml and refuses it unless its SHA-512 matches; a failed or
 //   tampered download throws and nothing is installed: the running launcher stays as it is.
+// - Then verify(version, files) must accept it: the maintainer's Ed25519 signature over that version and the
+//   installer's SHA-256 (src/updatesig.js, AUDIT H4). Until it passes, the update is not "ready" and is not installed
+//   when the launcher closes either. With no verify given, every update is refused.
 // - It checks a moment after start and then every 30 minutes. With "Update the launcher automatically" on (the
 //   default) a verified update installs itself quietly and the launcher opens again on its own, but only when nothing
 //   is going on: never while a game runs, a download or install is busy, or a sign-in is open. Otherwise it waits and
@@ -25,6 +28,7 @@ function isConfigured(cfg) {
 function createSelfUpdater({
   autoUpdater, config, isPackaged, currentVersion, log = () => {}, onState = () => {},
   auto = () => true, safeNow = () => true, beforeInstall = () => {}, timers = { setTimeout, setInterval, clearTimeout },
+  verify = async () => { throw new Error('No update signature check: refused.'); },
 }) {
   let state = { status: 'off', version: null, message: '' };
   const set = (patch) => { state = { ...state, ...patch }; onState(state); };
@@ -36,7 +40,7 @@ function createSelfUpdater({
   }
 
   autoUpdater.autoDownload = false;          // check() downloads it itself
-  autoUpdater.autoInstallOnAppQuit = true;   // a downloaded update is also installed when the launcher is closed
+  autoUpdater.autoInstallOnAppQuit = false;  // only after the signature check passed (see check())
   autoUpdater.allowDowngrade = false;
   autoUpdater.allowPrerelease = false;
   autoUpdater.setFeedURL({ provider: 'github', owner: config.owner, repo: config.repo });
@@ -74,7 +78,9 @@ function createSelfUpdater({
       const next = r && r.updateInfo && r.updateInfo.version;
       if (!next || next === currentVersion || !r.isUpdateAvailable) { set({ status: 'current', version: null, message: 'You have the latest launcher.' }); return state; }
       set({ status: 'downloading', version: next, message: 'Downloading ' + next + '…' });
-      await autoUpdater.downloadUpdate();
+      const files = await autoUpdater.downloadUpdate();
+      await verify(next, Array.isArray(files) ? files : []);
+      autoUpdater.autoInstallOnAppQuit = true; // verified: it may also be installed when the launcher is closed
       set({ status: 'ready', version: next, message: auto() ? 'Launcher ' + next + ' is ready. It installs by itself when nothing is running.' : 'Launcher ' + next + ' is ready. It installs when you restart.' });
       tryAuto();
     } catch (e) {
