@@ -100,7 +100,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
 - [x] **L6. Uninstall leaves everything.** *(By design: the uninstaller asks (default No). Checked and tightened: never asked or deleted while the uninstaller only runs for a launcher update (`${isUpdated}`) or silently; the question now says a game folder chosen in Settings is not touched. `test/rules.test.js`; the installer itself is built and checked at the end of Step 2.)* package.json `deleteAppDataOnUninstall: false`: games, worlds and the encrypted account tokens stay.
   *Fix:* an uninstaller question "Also remove your worlds and settings?" (default no).
 
-- [ ] **L7. "Fabric refused" kill timer can hit a later game.** `app/app.js:265-268`: `setTimeout(() => child.kill(), 2500)` reads `child` when it fires.
+- [x] **L7. "Fabric refused" kill timer can hit a later game.** *(Done: the timer remembers its own game process and only closes that one. `test/app.test.js` (source check).)* `app/app.js:265-268`: `setTimeout(() => child.kill(), 2500)` reads `child` when it fires.
   *Fix:* capture the process at the time.
 
 - [ ] **L8. Untested modules.** `src/guard.js`, `src/java.js`, `src/fabric.js`, `src/skin.js` have no tests.

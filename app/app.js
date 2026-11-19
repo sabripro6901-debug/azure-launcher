@@ -282,6 +282,7 @@ function startApp(opts = {}) {
       const applyMs = Date.now() - applyStart;
       if (batch) logLine('[MODS] Applied ' + batch.done.length + ' queued change(s) in ' + applyMs + ' ms' + (batch.failed.length ? ', failed: ' + batch.failed.join('; ') : ''));
       const startedAt = Date.now();
+      let thisGame = null; // this start's own process: a late timer can never close a later game (AUDIT L7)
       const started = await launch({
         root, mc: inst.mcVersion, loader: inst.loader ? inst.loaderVersion : null, mods: inst.mods, azureJar, account,
         gameDir: instanceDir(root, inst.id),
@@ -298,7 +299,7 @@ function startApp(opts = {}) {
           // Fabric refusing the mods then waits on its own error window: once its report is written, close it
           if (!refusedAt && /Incompatible mods found|Some of your mods are incompatible/.test(raw)) {
             refusedAt = Date.now();
-            setTimeout(() => { if (child) child.kill(); }, 2500);
+            setTimeout(() => { if (thisGame && child === thisGame) thisGame.kill(); }, 2500);
           }
         },
         beforeStart: async (prepared) => {
@@ -309,6 +310,7 @@ function startApp(opts = {}) {
         },
       });
       child = started.child;
+      thisGame = child;
       const playStart = Date.now();
       store.update(inst.id, { lastPlayed: new Date().toISOString() });
       setState('running');
