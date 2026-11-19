@@ -32,7 +32,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
 
 ## Medium
 
-- [ ] **M1. The launcher guard no longer matches the mod's guard.** `src/guard.js` has no sound-file allow-list; `tools/check_legit_jar.py` (mod repo) now refuses any `.ogg` that is not on its own-sounds list. The header comment (`src/guard.js:2`) says they are the same check.
+- [x] **M1. The launcher guard no longer matches the mod's guard.** *(Done: `src/guard.js` has the same OWN_SOUNDS list (name + SHA-256); any other .ogg is refused; .zip/.mrpack/.jar inside the jar are opened and checked the same way (depth 3). `test/guard.test.js`, with a list-match test against the mod repo when `AZURE_MOD_REPO` is set.)* `src/guard.js` has no sound-file allow-list; `tools/check_legit_jar.py` (mod repo) now refuses any `.ogg` that is not on its own-sounds list. The header comment (`src/guard.js:2`) says they are the same check.
   *Player:* nothing, unless a jar with Mojang audio got through (the build guard would still catch it).
   *Fix:* add the same allow-list (name + SHA-256) to `guard.js`, plus a `guard.test.js` (there is none today).
 
