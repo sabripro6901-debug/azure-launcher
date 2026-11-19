@@ -5,6 +5,7 @@
 // every token is kept in the encrypted Vault and never logged or put in an error message.
 const crypto = require('node:crypto');
 const { makeAccount } = require('./account');
+const { fetchWithTimeout } = require('./net');
 
 const PLACEHOLDER = 'REPLACE_WITH_AZURE_APP_CLIENT_ID';
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,7 +58,7 @@ function classify(e) {
   if (/AADSTS70016|AADSTS70019|expired|declined|cancel/i.test(m)) {
     return new AuthError('SIGN_IN_CANCELLED', 'The sign-in was cancelled or the code expired. Start again.');
   }
-  if (/ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|network/i.test(m)) {
+  if (/ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|network|timeout|stalled/i.test(m)) {
     return new AuthError('NETWORK', 'Could not reach Microsoft or Minecraft servers. Check your internet connection.');
   }
   return new AuthError('UNKNOWN', 'Sign-in failed: ' + m.slice(0, 200));
@@ -85,7 +86,7 @@ function vaultCache(vault, entry) {
   };
 }
 
-function createAuthService({ config, vault, Authflow, fetchFn = fetch, log = () => {} }) {
+function createAuthService({ config, vault, Authflow, fetchFn = fetchWithTimeout, log = () => {} }) {
   const say = (m) => log(redact(m));
   const clientId = config && config.azureClientId;
 

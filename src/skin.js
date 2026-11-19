@@ -2,12 +2,13 @@
 // A player's skin from Mojang's own servers (session server, then textures.minecraft.net), for the head in the sidebar.
 // The launcher's window only ever receives a small data: image made from it, never a remote URL.
 const { userAgent } = require('./version');
+const { fetchWithTimeout } = require('./net');
 
 const SESSION = 'https://sessionserver.mojang.com/session/minecraft/profile/';
 const MAX_BYTES = 200 * 1024;
 
 /** The skin PNG (a Buffer) for a Minecraft UUID, or null if the player has no custom skin or Mojang is unreachable. */
-async function fetchSkinPng(uuid, fetchFn = fetch) {
+async function fetchSkinPng(uuid, fetchFn = fetchWithTimeout) {
   const id = String(uuid).replace(/-/g, '');
   if (!/^[0-9a-f]{32}$/i.test(id)) return null;
   const r = await fetchFn(SESSION + id, { headers: { 'User-Agent': userAgent } });

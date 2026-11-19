@@ -12,7 +12,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { download, hashFile } = require('./net');
+const { download, hashFile, fetchWithTimeout } = require('./net');
 const { checkLegitJar } = require('./guard');
 
 const DEFAULT_MC = '1.21.11'; // what a latest.json without "minecraft" means
@@ -37,7 +37,7 @@ async function fetchText(url, fetchFn) {
 }
 
 /** The verified release description (parsed latest.json). Throws if the signature is wrong. */
-async function fetchRelease({ base, keyBase64, fetchFn = fetch }) {
+async function fetchRelease({ base, keyBase64, fetchFn = fetchWithTimeout }) {
   const [json, sig] = await Promise.all([
     fetchText(base + '/latest.json', fetchFn),
     fetchText(base + '/latest.json.sig', fetchFn),
@@ -91,7 +91,7 @@ async function installedJar(dir, mc) {
  * fails (offline, a forged list, a tampered file, a jar the guard refuses) the installed jar keeps being used
  * ({ ..., fallback: <reason> }). Only with nothing installed does the failure reach the caller.
  */
-async function ensureLegitJar({ base, keyBase64, dir, mc = DEFAULT_MC, fetchFn = fetch, log = () => {}, release }) {
+async function ensureLegitJar({ base, keyBase64, dir, mc = DEFAULT_MC, fetchFn = fetchWithTimeout, log = () => {}, release }) {
   try {
     const rel = release || await fetchRelease({ base, keyBase64, fetchFn });
     const build = pickBuild(rel, mc);
