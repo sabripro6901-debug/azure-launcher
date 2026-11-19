@@ -48,6 +48,9 @@ async function verifyLauncherUpdate({ owner, repo, version, files, keyBase64, fe
   }
   const installer = (files || []).find((f) => typeof f === 'string' && path.basename(f).toLowerCase().endsWith('.exe'));
   if (!installer || !fs.existsSync(installer)) throw new Error('The downloaded installer was not found: refused.');
+  // electron-updater may save it under its own name; the signed name must still match it (dashes vs spaces aside)
+  const norm = (n) => n.toLowerCase().replace(/[ _-]+/g, '-');
+  if (norm(path.basename(installer)) !== norm(m.file)) throw new Error('The downloaded installer is not the signed file (' + m.file + '): refused.');
   const got = await hashFile(installer, 'sha256');
   if (got !== m.sha256) throw new Error('The downloaded installer is not the signed one (SHA-256 differs): refused.');
   return { version: m.version, file: m.file, sha256: m.sha256 };
