@@ -91,3 +91,21 @@ test('a version id or library path from a profile cannot leave the game folder',
     await assert.rejects(ensureFabricProfile(root, '1.21.11', '0.18.3'), /Refused a version id/);
   } finally { net.restore(); }
 });
+
+test('M4: a saved Fabric profile is used without asking the server; a missing or damaged one is fetched', async () => {
+  const root = tmp();
+  const id = 'fabric-loader-0.18.3-1.21.11';
+  const url = 'https://meta.fabricmc.net/v2/versions/loader/1.21.11/0.18.3/profile/json';
+  const profile = { id, inheritsFrom: '1.21.11', mainClass: 'net.fabricmc.loader.impl.launch.knot.KnotClient', libraries: [] };
+  const net = serve({ [url]: JSON.stringify(profile) });
+  try {
+    assert.strictEqual(await ensureFabricProfile(root, '1.21.11', '0.18.3'), id);
+    assert.deepStrictEqual(net.asked, [url]);
+    net.asked.length = 0;
+    assert.strictEqual(await ensureFabricProfile(root, '1.21.11', '0.18.3'), id);
+    assert.deepStrictEqual(net.asked, [], 'second start: no network');
+    fs.writeFileSync(path.join(root, 'versions', id, id + '.json'), '{"id": "fabric-lo');
+    assert.strictEqual(await ensureFabricProfile(root, '1.21.11', '0.18.3'), id);
+    assert.deepStrictEqual(net.asked, [url], 'damaged: fetched again');
+  } finally { net.restore(); }
+});
