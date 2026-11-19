@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { unzipSync } = require('fflate');
-const { getJson, download, pool, fetchSha1 } = require('./net');
+const { getJson, download, pool, fetchSha1, openHashCache } = require('./net');
 
 const MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 const ASSET_HOST = 'https://resources.download.minecraft.net/';
@@ -134,6 +134,15 @@ function extractNatives(jar, dir) {
  * { version, classpath: [absolute jar paths], clientJar, nativesDir, assetsDir, assetIndexId, logConfig }.
  */
 async function install(root, id, log = () => {}) {
+  const cache = openHashCache(path.join(root, 'hash-cache.json')); // files already checked are not read again (AUDIT M2)
+  try {
+    return await installWith(root, id, log, cache);
+  } finally {
+    try { cache.save(); } catch { /* a cache only */ }
+  }
+}
+
+async function installWith(root, id, log, cache) {
   const v = await loadVersion(root, id);
   const mc = v.inheritsFrom || v.id;
   const libsDir = path.join(root, 'libraries');
@@ -142,7 +151,7 @@ async function install(root, id, log = () => {}) {
   const clientJar = path.join(root, 'versions', mc, mc + '.jar');
   const c = v.downloads && v.downloads.client;
   if (!c) throw new Error('Version ' + mc + ' has no client download');
-  await download(c.url, clientJar, { sha1: c.sha1 });
+  await download(c.url, clientJar, { sha1: c.sha1, cache });
   log('client jar ok');
 
   const wanted = [];
@@ -152,8 +161,9 @@ async function install(root, id, log = () => {}) {
   await pool(wanted, 12, async (f) => {
     const dest = path.join(libsDir, f.path);
     // Fabric's profile lists no hash for a few of its own libraries: the maven server publishes a .sha1 next to each file.
-    if (!f.sha1 && !f.sha512) f.sha1 = await fetchSha1(f.url + '.sha1');
-    await download(f.url, dest, { sha1: f.sha1, sha512: f.sha512 });
+    // Already checked against that .sha1 before and unchanged since: no need to ask the server again.
+    if (!f.sha1 && !f.sha512) f.sha1 = cache.known(dest, 'sha1') || await fetchSha1(f.url + '.sha1');
+    await download(f.url, dest, { sha1: f.sha1, sha512: f.sha512, cache });
     if (f.natives) extractNatives(dest, nativesDir);
     if (++done % 25 === 0) log('libraries ' + done + '/' + wanted.length);
   });
@@ -162,13 +172,13 @@ async function install(root, id, log = () => {}) {
 
   const ai = v.assetIndex;
   const indexFile = path.join(root, 'assets', 'indexes', ai.id + '.json');
-  await download(ai.url, indexFile, { sha1: ai.sha1 });
+  await download(ai.url, indexFile, { sha1: ai.sha1, cache });
   const objects = Object.values(JSON.parse(fs.readFileSync(indexFile, 'utf8')).objects);
   const unique = [...new Map(objects.map((o) => [o.hash, o])).values()];
   let got = 0;
   await pool(unique, 24, async (o) => {
     const dir = o.hash.slice(0, 2);
-    await download(ASSET_HOST + dir + '/' + o.hash, path.join(root, 'assets', 'objects', dir, o.hash), { sha1: o.hash });
+    await download(ASSET_HOST + dir + '/' + o.hash, path.join(root, 'assets', 'objects', dir, o.hash), { sha1: o.hash, cache });
     if (++got % 500 === 0) log('assets ' + got + '/' + unique.length);
   });
   log('assets ok (' + unique.length + ')');
@@ -177,7 +187,7 @@ async function install(root, id, log = () => {}) {
   const lc = v.logging && v.logging.client;
   if (lc && lc.file) {
     logConfig = { file: path.join(root, 'assets', 'log_configs', lc.file.id), argument: lc.argument };
-    await download(lc.file.url, logConfig.file, { sha1: lc.file.sha1 });
+    await download(lc.file.url, logConfig.file, { sha1: lc.file.sha1, cache });
   }
   return { version: v, classpath, clientJar, nativesDir, assetsDir: path.join(root, 'assets'), assetIndexId: ai.id, logConfig, mc };
 }

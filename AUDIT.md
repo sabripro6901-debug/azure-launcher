@@ -36,7 +36,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* nothing, unless a jar with Mojang audio got through (the build guard would still catch it).
   *Fix:* add the same allow-list (name + SHA-256) to `guard.js`, plus a `guard.test.js` (there is none today).
 
-- [ ] **M2. Every start re-hashes every game file.** `src/net.js:42` hashes an existing file each time; `src/install.js:169` runs it over every asset object (thousands, hundreds of MB), plus libraries, the client jar and the Java runtime check.
+- [x] **M2. Every start re-hashes every game file.** *(Done: `<game folder>/hash-cache.json` remembers each checked file's hash with its size and modified time; an unchanged file is not read again, a changed one is hashed and re-downloaded if wrong. Fabric libraries already checked against their `.sha1` don't ask the server again. A cache only: deleting it is safe. `test/net.test.js`. Start time on a real install not measured yet (with M12).)* `src/net.js:42` hashes an existing file each time; `src/install.js:169` runs it over every asset object (thousands, hundreds of MB), plus libraries, the client jar and the Java runtime check.
   *Player:* "Preparing" takes noticeably long on every Play, much longer on a hard disk.
   *Fix:* full hash on first install, then a small index (path, size, mtime, hash) so unchanged files are not re-read; full re-check only when size or mtime differ, or on "Repair".
 
