@@ -48,11 +48,53 @@ function hashFile(file, algo) {
   });
 }
 
+/**
+ * Remembers the hash of files already checked, by size and modified time (AUDIT M2), so a start does not re-read
+ * every game file: a file is hashed again only when it changed. Saved as JSON (a cache only: deleting it is safe).
+ */
+function openHashCache(file) {
+  let files = {};
+  try {
+    const o = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (o && o.version === 1 && o.files && typeof o.files === 'object') files = o.files;
+  } catch { /* none yet, or damaged: start empty */ }
+  let dirty = false;
+  const stat = (f) => { try { return fs.statSync(f); } catch { return null; } };
+  return {
+    /** The checked hash of f if it is unchanged since then, else null. */
+    known(f, algo) {
+      const c = files[path.resolve(f)];
+      const st = c && stat(f);
+      return st && c.algo === algo && c.size === st.size && c.mtime === st.mtimeMs ? c.hash : null;
+    },
+    remember(f, algo, hash) {
+      const st = stat(f);
+      if (!st) return;
+      files[path.resolve(f)] = { algo, hash, size: st.size, mtime: st.mtimeMs };
+      dirty = true;
+    },
+    save() {
+      if (!dirty) return;
+      require('./atomic').writeJsonAtomic(file, { version: 1, files });
+      dirty = false;
+    },
+    size: () => Object.keys(files).length,
+  };
+}
+
+async function checkedHash(f, algo, cache) {
+  const k = cache && cache.known(f, algo);
+  if (k) return k;
+  const h = await hashFile(f, algo);
+  if (cache) cache.remember(f, algo, h);
+  return h;
+}
+
 /** Downloads url to dest unless dest already has the expected hash. Throws if the hash is wrong after download. */
-async function download(url, dest, { sha1, sha256, sha512, tries = 3, fetchFn = fetch, stallMs = STALL_MS } = {}) {
+async function download(url, dest, { sha1, sha256, sha512, tries = 3, fetchFn = fetch, stallMs = STALL_MS, cache = null } = {}) {
   const algo = sha512 ? 'sha512' : sha256 ? 'sha256' : sha1 ? 'sha1' : null;
   const want = sha512 || sha256 || sha1;
-  if (fs.existsSync(dest) && (!algo || (await hashFile(dest, algo)) === want)) return false;
+  if (fs.existsSync(dest) && (!algo || (await checkedHash(dest, algo, cache)) === want)) return false;
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   let last;
   const tmp = dest + '.part';
@@ -82,6 +124,7 @@ async function download(url, dest, { sha1, sha256, sha512, tries = 3, fetchFn = 
         throw new Error('Wrong ' + algo + ' for ' + url);
       }
       fs.renameSync(tmp, dest);
+      if (algo && cache) cache.remember(dest, algo, want);
       return true;
     } catch (e) {
       last = e;
@@ -112,4 +155,4 @@ async function fetchSha1(url, fetchFn = fetch) {
   return h;
 }
 
-module.exports = { getJson, download, hashFile, pool, fetchSha1, timedFetch, fetchWithTimeout, TIMEOUT_MS, STALL_MS };
+module.exports = { getJson, download, hashFile, pool, fetchSha1, openHashCache, timedFetch, fetchWithTimeout, TIMEOUT_MS, STALL_MS };

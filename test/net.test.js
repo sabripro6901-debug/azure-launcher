@@ -69,3 +69,32 @@ test('modules that take a fetchFn default to one with a timeout', () => {
     assert.ok(!/fetchFn = fetch\b(?!With)/.test(s), f + ' still defaults to plain fetch');
   }
 });
+
+test('M2: a file checked once is not read again on the next start while unchanged; a changed one is', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-net-'));
+  const dest = path.join(dir, 'lib.jar');
+  fs.writeFileSync(dest, 'library bytes');
+  const sha1 = require('node:crypto').createHash('sha1').update('library bytes').digest('hex');
+  const cacheFile = path.join(dir, 'hash-cache.json');
+  const offline = async () => { throw new Error('no network needed'); };
+  let c = net.openHashCache(cacheFile);
+  assert.strictEqual(await net.download('https://example.invalid/lib.jar', dest, { sha1, cache: c, fetchFn: offline }), false);
+  c.save();
+  // next start: a new process reads the saved cache
+  c = net.openHashCache(cacheFile);
+  const real = fs.createReadStream;
+  let reads = 0;
+  fs.createReadStream = (...a) => { reads++; return real(...a); };
+  try {
+    assert.strictEqual(await net.download('https://example.invalid/lib.jar', dest, { sha1, cache: c, fetchFn: offline }), false);
+    assert.strictEqual(reads, 0, 'unchanged file was not hashed again');
+    fs.writeFileSync(dest, 'tampered library!');
+    let fetched = 0;
+    await assert.rejects(net.download('https://example.invalid/lib.jar', dest, { sha1, cache: c, tries: 1, fetchFn: async () => { fetched++; throw new Error('offline'); } }));
+    assert.ok(reads > 0, 'a changed file is hashed again');
+    assert.strictEqual(fetched, 1, 'and downloaded again because the hash no longer matches');
+  } finally {
+    fs.createReadStream = real;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
