@@ -103,7 +103,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
 - [x] **L7. "Fabric refused" kill timer can hit a later game.** *(Done: the timer remembers its own game process and only closes that one. `test/app.test.js` (source check).)* `app/app.js:265-268`: `setTimeout(() => child.kill(), 2500)` reads `child` when it fires.
   *Fix:* capture the process at the time.
 
-- [ ] **L8. Untested modules.** `src/guard.js`, `src/java.js`, `src/fabric.js`, `src/skin.js` have no tests.
+- [x] **L8. Untested modules.** *(Done: `src/guard.js` → `test/guard.test.js` (M1, L1, L2); `src/java.js` and `src/fabric.js` → `test/safepath.test.js` (M3, M4); `src/skin.js` → `test/skin.test.js` (only Mojang hosts, https, 200 KB cap).)* `src/guard.js`, `src/java.js`, `src/fabric.js`, `src/skin.js` have no tests.
 
 - [ ] **L9. Paths with accents on old versions.** A Windows user name with accents puts the game folder on a non-ASCII path; old LWJGL builds (1.16 and older) can fail to load natives from it. Needs a test machine path; fix by using a short ASCII natives path when needed.
 - [ ] **L10. Other small findings (independent review).** A damaged `queue.js` or modfix journal (`src/queue.js:126,128`, `src/modfix.js` writeJournal) reads as empty, so a rollback is lost (same fix as H2). A cached `versions/<id>/<id>.json` is not re-hashed (`src/install.js:60-80`). `unzipSync` has no entry or size cap for the jar in `src/guard.js:64` and natives in `src/install.js:125` (both signed or hash-checked). `src/mods.js:15` joins `m.file` from `instances.json` without a name check. The access token is on the game's command line (`src/launch.js:100`), standard for launchers.
