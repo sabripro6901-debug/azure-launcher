@@ -63,6 +63,18 @@ function azureVersions(release) {
   return out;
 }
 
+/** True if version a is older than b (dotted numbers, e.g. 1.2.9 < 1.2.21). Unknown versions are never "older". */
+function olderThan(a, b) {
+  const pa = String(a || '').split('.').map(Number);
+  const pb = String(b || '').split('.').map(Number);
+  if (!a || !b || pa.some(Number.isNaN) || pb.some(Number.isNaN)) return false;
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x !== y) return x < y;
+  }
+  return false;
+}
+
 const STATE = 'installed.json'; // dir/installed.json: { "<mc>": { file, sha256, version } } = the last jar that passed every check
 
 function readState(dir) {
@@ -94,6 +106,11 @@ async function ensureLegitJar({ base, keyBase64, dir, mc = DEFAULT_MC, fetchFn =
     const rel = release || await fetchRelease({ base, keyBase64, fetchFn });
     const build = pickBuild(rel, mc);
     if (!build) return null;
+    // An older signed list served again (a replay or a stale mirror) never takes a player back to an older Azure (AUDIT L1).
+    const before = readState(dir)[mc];
+    if (before && olderThan(build.version || rel.version, before.version)) {
+      throw new Error('The release list offers Azure ' + (build.version || rel.version) + ', older than the installed ' + before.version + ': ignored.');
+    }
     const dest = path.join(dir, build.file);
     const stage = path.join(dir, '.staging', build.file);
     fs.mkdirSync(dir, { recursive: true });
@@ -128,4 +145,4 @@ async function ensureLegitJar({ base, keyBase64, dir, mc = DEFAULT_MC, fetchFn =
   }
 }
 
-module.exports = { verifySignature, fetchRelease, ensureLegitJar, pickBuild, azureVersions, DEFAULT_MC };
+module.exports = { verifySignature, fetchRelease, ensureLegitJar, pickBuild, azureVersions, olderThan, DEFAULT_MC };

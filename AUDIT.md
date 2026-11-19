@@ -83,7 +83,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
 
 ## Low
 
-- [ ] **L1. Signed release list can be replayed.** `src/channel.js:40-47` accepts any correctly signed `latest.json`, even an older one; the jar version is not compared with the installed one.
+- [x] **L1. Signed release list can be replayed.** *(Done: a signed list offering an Azure version older than the installed one is ignored and the installed jar keeps being used. `test/guard.test.js`.)* `src/channel.js:40-47` accepts any correctly signed `latest.json`, even an older one; the jar version is not compared with the installed one.
   *Fix:* refuse a release older than the installed one (version compare) unless the user picks it.
 
 - [ ] **L2. A damaged `fabric.mod.json` crashes the guard.** `src/guard.js:80` (`JSON.parse` without try): callers catch it today, but the guard should answer with a problem, not throw.
