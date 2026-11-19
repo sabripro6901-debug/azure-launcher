@@ -10,6 +10,10 @@ async function ensureMods(gameDir, list, log = () => {}) {
   const dir = path.join(gameDir, 'mods');
   fs.mkdirSync(dir, { recursive: true });
   for (const m of list) {
+    // a plain .jar name only: a hand-edited instances.json can't place a file outside mods/ (AUDIT L10)
+    if (typeof m.file !== 'string' || !/^[^\\/:*?"<>|\x00-\x1f]+\.jar$/i.test(m.file) || m.file !== path.basename(m.file) || m.file.startsWith('.')) {
+      throw new Error('Refused a mod file name from the instance list: ' + JSON.stringify(String(m.file).slice(0, 80)));
+    }
     const got = await download(m.url, path.join(dir, m.file), { sha512: m.sha512 });
     log((got ? 'downloaded ' : 'ok ') + m.name);
   }

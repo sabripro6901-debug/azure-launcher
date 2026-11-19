@@ -71,3 +71,16 @@ test('L2: a damaged fabric.mod.json is refused, not a crash', () => {
   fs.writeFileSync(f, zipSync({ 'fabric.mod.json': strToU8('{"id": "aur') }));
   assert.deepStrictEqual(checkLegitJar(f), ['fabric.mod.json is not valid JSON']);
 });
+
+test('L10: a pinned mod name from instances.json cannot leave mods/; oversized jars are refused before unzipping', async () => {
+  const { ensureMods } = require('../src/mods');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-mods-'));
+  for (const file of ['../evil.jar', '..\evil.jar', 'C:evil.jar', 'sub/evil.jar', '.hidden.jar', 'notes.txt']) {
+    await assert.rejects(ensureMods(dir, [{ name: 'x', file, url: 'https://cdn.modrinth.com/x', sha512: '0'.repeat(128) }]), /Refused a mod file name/, file);
+  }
+  const big = path.join(dir, 'big.jar');
+  fs.writeFileSync(big, '');
+  fs.truncateSync(big, 201 * 1024 * 1024);
+  assert.deepStrictEqual(checkLegitJar(big), ['jar is too large to be the Azure Client']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

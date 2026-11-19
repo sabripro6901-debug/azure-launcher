@@ -40,6 +40,8 @@ const OWN_SOUNDS = new Map([
   ['assets/aurora/sounds/white_hole_beat.ogg', 'dcc72b706d1e42e2e40e89c8da57969e57f6792910ddaea3ff51f284c0851298'],
 ]);
 const ARCHIVE = /\.(zip|mrpack|jar)$/i;
+const MAX_JAR = 200 * 1024 * 1024;
+const MAX_ENTRIES = 50000;
 const MAX_DEPTH = 3;
 
 function bannedByHash(name) {
@@ -97,7 +99,11 @@ function checkLegitJar(jarPath) {
   const problems = [];
   let files;
   try {
-    files = unzipSync(new Uint8Array(fs.readFileSync(jarPath)));
+    // the Azure jar is a few MB: anything much bigger, or with a huge number of files, is not ours (AUDIT L10)
+    if (fs.statSync(jarPath).size > MAX_JAR) return ['jar is too large to be the Azure Client'];
+    let count = 0;
+    files = unzipSync(new Uint8Array(fs.readFileSync(jarPath)), { filter: () => ++count <= MAX_ENTRIES });
+    if (count > MAX_ENTRIES) return ['jar has too many files to be the Azure Client'];
   } catch (e) {
     return ['not a readable jar: ' + e.message];
   }
