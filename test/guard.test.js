@@ -84,3 +84,12 @@ test('L10: a pinned mod name from instances.json cannot leave mods/; oversized j
   assert.deepStrictEqual(checkLegitJar(big), ['jar is too large to be the Azure Client']);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('L10/L1 follow-ups: a jar entry that unpacks huge is refused; versions with v, -beta or +build compare by their numbers', () => {
+  const { olderThan } = require('../src/channel');
+  assert.ok(olderThan('v1.2.9', '1.2.21') && olderThan('1.2.15+b2', '1.2.16') && !olderThan('1.3.0-beta', '1.2.21'));
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'azure-guard-')), 'bomb.jar');
+  fs.writeFileSync(f, zipSync({ 'fabric.mod.json': META, 'big.bin': new Uint8Array(65 * 1024 * 1024) }, { level: 9 }));
+  assert.ok(fs.statSync(f).size < 1024 * 1024, 'small on disk');
+  assert.deepStrictEqual(checkLegitJar(f), ['a file in the jar is too large to be part of the Azure Client: big.bin']);
+});

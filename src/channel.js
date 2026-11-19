@@ -65,8 +65,9 @@ function azureVersions(release) {
 
 /** True if version a is older than b (dotted numbers, e.g. 1.2.9 < 1.2.21). Unknown versions are never "older". */
 function olderThan(a, b) {
-  const pa = String(a || '').split('.').map(Number);
-  const pb = String(b || '').split('.').map(Number);
+  const nums = (v) => String(v || '').trim().replace(/^v/i, '').replace(/[-+].*$/, '').split('.').map(Number);
+  const pa = nums(a);
+  const pb = nums(b);
   if (!a || !b || pa.some(Number.isNaN) || pb.some(Number.isNaN)) return false;
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
     const x = pa[i] || 0, y = pb[i] || 0;
