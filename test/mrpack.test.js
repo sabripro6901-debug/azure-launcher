@@ -164,3 +164,35 @@ test('after an import, files Modrinth knows get names, icons and update checks',
   const list = new Content({ gameDir, instance: { mcVersion: '1.21.11', loader: 'fabric', mods: [] }, client }).list().mod;
   assert.deepStrictEqual(list.map((m) => [m.name, m.source]).sort(), [['Pack Mod', 'modrinth'], ['q', 'local']]);
 });
+
+test('M10: a pack is never read into memory whole; only its description and override files are read', () => {
+  const big = new Uint8Array(8 * 1024 * 1024); // stored mods data the launcher must not load (pretend: a big pack)
+  const f = packFile(base([]), { 'overrides/config/a.txt': 'hello', 'overrides/mods/x.jar': big.subarray(0, 10), 'other/huge.bin': big });
+  const real = fs.readFileSync;
+  const readWhole = [];
+  fs.readFileSync = (p, ...a) => { if (String(p) === f) readWhole.push(p); return real(p, ...a); };
+  try {
+    const pack = mrpack.parse(f);
+    assert.strictEqual(pack.name, 'My Pack');
+    const { overrides } = mrpack.readOverrides(f);
+    assert.deepStrictEqual(overrides.map((o) => o.rel).sort(), ['config/a.txt', 'mods/x.jar']);
+    assert.strictEqual(Buffer.from(overrides.find((o) => o.rel === 'config/a.txt').bytes).toString(), 'hello');
+  } finally { fs.readFileSync = real; }
+  assert.deepStrictEqual(readWhole, [], 'the whole pack file was never read');
+});
+
+test('M10: a zip entry that lies about its size is refused', () => {
+  const { openZip } = require('../src/zipfile');
+  const f = packFile(base([]), { 'overrides/config/a.txt': 'x'.repeat(5000) });
+  const b = fs.readFileSync(f);
+  // make the directory claim the override is 10 bytes; it inflates to 5000
+  const name = Buffer.from('overrides/config/a.txt');
+  for (let i = 0; i < b.length - 4; i++) {
+    if (b.readUInt32LE(i) === 0x02014b50 && b.subarray(i + 46, i + 46 + name.length).equals(name)) b.writeUInt32LE(10, i + 24);
+  }
+  fs.writeFileSync(f, b);
+  const zip = openZip(f);
+  try {
+    assert.throws(() => zip.read(zip.entries.find((e) => e.name === 'overrides/config/a.txt')), /oversized|Damaged/);
+  } finally { zip.close(); }
+});
