@@ -255,3 +255,10 @@ test('L4: account and instance edits answer with a message instead of throwing',
   assert.match(src, /const p = patch && typeof patch === 'object' \? patch : \{\};/);
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', 'renderer.js'), 'utf8'), /renderAccounts\(accountsAnswer\(await api\.accounts\.select/);
 });
+
+test('L7: the "Fabric refused" close timer only ever closes the game it was started for', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'app.js'), 'utf8');
+  assert.match(src, /setTimeout\(\(\) => \{ if \(thisGame && child === thisGame\) thisGame\.kill\(\); \}, 2500\)/);
+  assert.match(src, /child = started\.child;\s*thisGame = child;/);
+  assert.ok(!/setTimeout\(\(\) => \{ if \(child\) child\.kill\(\); \}/.test(src));
+});
