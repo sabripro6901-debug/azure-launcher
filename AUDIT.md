@@ -44,7 +44,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* a damaged Java folder (antivirus, disk error) gives a crash before the title screen that never fixes itself.
   *Fix:* verify the manifest's SHA-1; re-verify (cheaply, with M2's index) when the game exits during start; a "Repair Java" path.
 
-- [ ] **M4. Starting needs the internet even when everything is installed.** `src/fabric.js:8` re-downloads the Fabric profile on every start (the Mojang manifest and Java `all.json` are only fetched when nothing is cached, and the channel falls back to the installed jar). The Fabric profile id from the server is used in a path unchecked (`src/fabric.js:10-11`).
+- [x] **M4. Starting needs the internet even when everything is installed.** *(Done: a saved Fabric profile for that loader and game version is used without asking the server; a missing or damaged one is fetched; the profile id is checked (M3). Sign-in still needs the internet on every Play (Q1). `test/safepath.test.js`.)* `src/fabric.js:8` re-downloads the Fabric profile on every start (the Mojang manifest and Java `all.json` are only fetched when nothing is cached, and the channel falls back to the installed jar). The Fabric profile id from the server is used in a path unchecked (`src/fabric.js:10-11`).
   *Player:* on a flaky connection Play fails at "Fabric profile" even though nothing changed.
   *Fix:* keep the saved profile and use it when the fetch fails; check the id against `^[A-Za-z0-9._-]+$`. (Sign-in still needs the internet: see Q1.)
 
