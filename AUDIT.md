@@ -64,7 +64,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* French players get an English-only launcher (the Azure Client mod itself is translated).
   *Fix:* a small string table (en, fr) with the language picked from the system and a Settings choice; tests that every key exists in both.
 
-- [ ] **M9. Changing the game folder mid-way or without moving data.** `app/app.js:58` (`rootDir()` read on every call), `app/app.js:817` (`settings:set` allowed while a game is preparing or running); a new folder starts empty (`src/settings.js:39`).
+- [x] **M9. Changing the game folder mid-way or without moving data.** *(Done: the folder can't change while a game runs or a download or install is busy (the player gets a message); only a full path or the default is accepted. Moving the old data is not done: the Settings hint already says so; moving it would change where players' data is stored, so it waits for the maintainer's decision. `test/app.test.js`.)* `app/app.js:58` (`rootDir()` read on every call), `app/app.js:817` (`settings:set` allowed while a game is preparing or running); a new folder starts empty (`src/settings.js:39`).
   *Player:* changing the folder while a game starts mixes two folders; after changing it, all worlds and mods "disappear" (they are still in the old folder).
   *Fix:* refuse the change while not idle; ask "Move everything to the new folder?" (copy, check, then switch) or keep the old one.
 

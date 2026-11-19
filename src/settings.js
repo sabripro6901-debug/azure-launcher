@@ -37,7 +37,8 @@ function splitArgs(text) {
 function validate(input, base = defaults()) {
   const s = { ...base };
   const i = input || {};
-  if (typeof i.gameRoot === 'string' && i.gameRoot.length < 400 && !i.gameRoot.includes('\0')) s.gameRoot = i.gameRoot;
+  // '' (the default folder) or a full path (AUDIT M9): a relative path would depend on where the launcher was started.
+  if (typeof i.gameRoot === 'string' && i.gameRoot.length < 400 && !i.gameRoot.includes('\0') && (i.gameRoot === '' || require('node:path').isAbsolute(i.gameRoot))) s.gameRoot = i.gameRoot;
   if (typeof i.javaArgs === 'string' && i.javaArgs.length < 1000) s.javaArgs = i.javaArgs;
   if (Number.isFinite(i.ram)) s.ram = Math.min(BOUNDS.ram[1], Math.max(BOUNDS.ram[0], Math.round(i.ram / 256) * 256));
   if (typeof i.closeOnLaunch === 'boolean') s.closeOnLaunch = i.closeOnLaunch;
