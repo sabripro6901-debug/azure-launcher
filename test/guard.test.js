@@ -52,3 +52,16 @@ test('M1: the own-sounds list matches the mod repo (when AZURE_MOD_REPO points t
   const theirs = [...block.matchAll(/"([^"]+\.ogg)":\s*"([0-9a-f]{64})"/g)].map((m) => m[1] + '=' + m[2]).sort();
   assert.deepStrictEqual([...OWN_SOUNDS].map(([k, v]) => k + '=' + v).sort(), theirs);
 });
+
+test('L1: an older signed release list never replaces the installed Azure; versions compare as numbers', async () => {
+  const { ensureLegitJar, olderThan } = require('../src/channel');
+  assert.ok(olderThan('1.2.9', '1.2.21') && !olderThan('1.2.21', '1.2.9') && !olderThan('1.2.21', '1.2.21') && !olderThan('', '1.0') && !olderThan('x', '1.0'));
+  const f = jar({ 'com/aurora/client/A.class': strToU8('ok') });
+  const dir = path.dirname(f);
+  fs.writeFileSync(path.join(dir, 'installed.json'), JSON.stringify({ '1.21.11': { file: path.basename(f), sha256: crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'), version: '1.2.21' } }));
+  const old = { version: '1.2.9', legit: { file: 'azure-client-legit-1.2.9.jar', sha256: '0'.repeat(64), size: 10 } };
+  const r = await ensureLegitJar({ base: 'http://127.0.0.1:9', keyBase64: '', dir, mc: '1.21.11', release: old });
+  assert.strictEqual(r.version, '1.2.21');
+  assert.match(r.fallback, /older than the installed 1\.2\.21/);
+  assert.ok(!fs.existsSync(path.join(dir, 'azure-client-legit-1.2.9.jar')));
+});
