@@ -832,7 +832,16 @@ function startApp(opts = {}) {
     handle('accounts:remove', (id) => { auth.remove(id); return auth.listAccounts(); });
     handle('accounts:head', (uuid) => headOf(String(uuid)));
     handle('settings:get', () => settings.get());
-    handle('settings:set', (patch) => { const r = settings.set(patch); if (patch && patch.autoUpdateLauncher === true) selfUpdate.tryAuto(); return r; });
+    handle('settings:set', (patch) => {
+      // The game folder can't change while a game runs or a download or install is busy (AUDIT M9): they write there.
+      if (patch && typeof patch.gameRoot === 'string' && patch.gameRoot !== settings.get().gameRoot && (state !== 'idle' || child || busyJobs > 0)) {
+        const { gameRoot, ...rest } = patch;
+        return { ...settings.set(rest), refused: 'Close the game and wait for downloads to finish before changing the game folder.' };
+      }
+      const r = settings.set(patch);
+      if (patch && patch.autoUpdateLauncher === true) selfUpdate.tryAuto();
+      return r;
+    });
     handle('settings:chooseFolder', async () => {
       const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] });
       return r.canceled ? null : path.resolve(r.filePaths[0]);

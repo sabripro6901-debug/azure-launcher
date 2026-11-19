@@ -225,3 +225,14 @@ test('M7: install and start errors get a clear reason, not only "The game couldn
   const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'app.js'), 'utf8');
   assert.match(src, /: classify\(e, fallback\);/, 'describe() uses it');
 });
+
+test('M9: the game folder is a full path, and it cannot change while a game runs or a download is busy', () => {
+  const { validate } = require('../src/settings');
+  assert.strictEqual(validate({ gameRoot: 'games' }).gameRoot, '', 'a relative path is ignored');
+  assert.strictEqual(validate({ gameRoot: path.resolve('/tmp/azure-games') }).gameRoot, path.resolve('/tmp/azure-games'));
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'app.js'), 'utf8');
+  const h = src.slice(src.indexOf("handle('settings:set'"), src.indexOf("handle('settings:set'") + 700);
+  assert.match(h, /patch\.gameRoot !== settings\.get\(\)\.gameRoot && \(state !== 'idle' \|\| child \|\| busyJobs > 0\)/);
+  assert.match(h, /refused:/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', 'renderer.js'), 'utf8'), /if \(saved && saved\.refused\) \{ toast\(saved\.refused\)/);
+});

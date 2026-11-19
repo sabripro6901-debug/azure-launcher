@@ -650,7 +650,9 @@ function renderSettings() {
 }
 
 async function saveSettings(patch) {
-  appState.settings = await api.settings.set(patch);
+  const saved = await api.settings.set(patch);
+  if (saved && saved.refused) { toast(saved.refused); delete saved.refused; }
+  appState.settings = saved;
   const fresh = await api.state();
   appState.root = fresh.root;
   appState.instances = fresh.instances;
