@@ -78,3 +78,11 @@ test('the launcher has its update key built in (public key only)', () => {
   assert.strictEqual(key.asymmetricKeyType, 'ed25519');
   assert.ok(!/PRIVATE/.test(txt));
 });
+
+test('refused: the signed description names another installer', async () => {
+  const { publicKey, privateKey } = pair();
+  const r = release({ key: privateKey });
+  const other = path.join(path.dirname(r.exe), 'Something-Else-2.0.0.exe');
+  fs.copyFileSync(r.exe, other);
+  await assert.rejects(verifyLauncherUpdate(opts(r, publicKey, { files: [other] })), /not the signed file/);
+});
