@@ -567,7 +567,7 @@ function startApp(opts = {}) {
     handle('app:state', () => ({
       state, version, dev: dev.enabled, configured: isConfigured(config),
       instances: store.list().map(view), selected: selectedInstance().id,
-      accounts: auth.listAccounts(), settings: settings.get(), root: rootDir(),
+      accounts: auth.listAccounts(), storageProblem: auth.storageProblem() ? playerMessage('SECURE_STORAGE') : null, settings: settings.get(), root: rootDir(),
       about: aboutInfo(), justUpdated: updatedNote === undefined ? (updatedNote = justUpdated()) : null,
     }));
     handle('launch:start', (opts) => doLaunch({ skipCheck: !!(opts && opts.skipCheck) }));

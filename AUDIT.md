@@ -72,7 +72,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* importing a large pack can freeze or crash the launcher on a PC with little memory.
   *Fix:* read the zip's central directory and inflate only the needed entries (fflate's streaming `Unzip`), one pass.
 
-- [ ] **M11. Secure storage missing breaks the whole window.** `src/vault.js:53` throws when an account file exists but `safeStorage` is unavailable (rare: damaged profile or DPAPI failure); `app:state` (`app/app.js:536-541`) calls `auth.listAccounts()` without a try, so the page gets no state at all.
+- [x] **M11. Secure storage missing breaks the whole window.** *(Done: the account list comes back empty with a reason instead of an error, the window opens, and the player sees what to do (English and French). `test/auth.test.js`.)* `src/vault.js:53` throws when an account file exists but `safeStorage` is unavailable (rare: damaged profile or DPAPI failure); `app:state` (`app/app.js:536-541`) calls `auth.listAccounts()` without a try, so the page gets no state at all.
   *Player:* on a PC without working Windows DPAPI (rare: roaming or broken profiles) the launcher opens on a blank or broken page.
   *Fix:* `listAccounts` returns `[]` with a flag; the Accounts page explains it.
 

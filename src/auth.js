@@ -58,6 +58,9 @@ function classify(e) {
   if (/AADSTS70016|AADSTS70019|expired|declined|cancel/i.test(m)) {
     return new AuthError('SIGN_IN_CANCELLED', 'The sign-in was cancelled or the code expired. Start again.');
   }
+  if (/Secure storage is not available/i.test(m)) {
+    return new AuthError('SECURE_STORAGE', m);
+  }
   if (/ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|fetch failed|network|timeout|stalled/i.test(m)) {
     return new AuthError('NETWORK', 'Could not reach Microsoft or Minecraft servers. Check your internet connection.');
   }
@@ -168,6 +171,8 @@ function createAuthService({ config, vault, Authflow, fetchFn = fetchWithTimeout
     return profile;
   }
 
+  let storageError = null;
+
   function index() {
     return vault.get('accounts') || { accounts: [], selected: null };
   }
@@ -204,10 +209,21 @@ function createAuthService({ config, vault, Authflow, fetchFn = fetchWithTimeout
       }
     },
 
+    /** The saved accounts; none (and storageProblem() says why) when Windows can't open them (AUDIT M11). */
     listAccounts() {
-      const idx = index();
+      let idx;
+      try {
+        idx = index();
+        storageError = null;
+      } catch (e) {
+        storageError = classify(e);
+        log('[accounts] ' + e.message);
+        return [];
+      }
       return idx.accounts.map((a) => ({ ...a, selected: a.id === idx.selected }));
     },
+
+    storageProblem() { return storageError ? storageError.code : null; },
 
     select(id) {
       const idx = index();
