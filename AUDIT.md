@@ -94,10 +94,10 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* a rare "Error invoking remote method" in the console; the click does nothing.
   *Fix:* answer `{ ok:false, message }` like the other handlers.
 
-- [ ] **L5. `npm audit`: 3 moderate.** `uuid` (missing bounds check when a buffer is passed) via `@azure/msal-node` via `prismarine-auth`. The launcher never passes a buffer; no fix is available upstream yet.
+- [~] **L5. `npm audit`: 3 moderate.** *(Checked 2026-11-19: not reachable here. The advisory (GHSA-w5hq-g745-h8pq) is about uuid v3/v5/v6 called with a buffer; msal-node 2.16.3 only calls `v4()` with no buffer (`GuidGenerator`). No upstream fix in prismarine-auth/msal-node yet. Forcing uuid 11.1.1 with an npm `overrides` entry would change a dependency, so it waits for the maintainer's decision.)* `uuid` (missing bounds check when a buffer is passed) via `@azure/msal-node` via `prismarine-auth`. The launcher never passes a buffer; no fix is available upstream yet.
   *Fix:* note in AUDIT; re-check on each release.
 
-- [ ] **L6. Uninstall leaves everything.** package.json `deleteAppDataOnUninstall: false`: games, worlds and the encrypted account tokens stay.
+- [x] **L6. Uninstall leaves everything.** *(By design: the uninstaller asks (default No). Checked and tightened: never asked or deleted while the uninstaller only runs for a launcher update (`${isUpdated}`) or silently; the question now says a game folder chosen in Settings is not touched. `test/rules.test.js`; the installer itself is built and checked at the end of Step 2.)* package.json `deleteAppDataOnUninstall: false`: games, worlds and the encrypted account tokens stay.
   *Fix:* an uninstaller question "Also remove your worlds and settings?" (default no).
 
 - [ ] **L7. "Fabric refused" kill timer can hit a later game.** `app/app.js:265-268`: `setTimeout(() => child.kill(), 2500)` reads `child` when it fires.
