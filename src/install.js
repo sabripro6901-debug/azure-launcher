@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { unzipSync } = require('fflate');
 const { getJson, download, pool, fetchSha1, openHashCache } = require('./net');
+const { inside, versionId } = require('./safepath');
 
 const MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 const ASSET_HOST = 'https://resources.download.minecraft.net/';
@@ -60,6 +61,7 @@ function mergeVersions(parent, child) {
 
 /** The vanilla version JSON, from Mojang's manifest (the manifest carries its SHA-1). */
 async function fetchVanilla(root, id) {
+  versionId(id);
   const manifest = await getJson(MANIFEST);
   const entry = manifest.versions.find((v) => v.id === id);
   if (!entry) throw new Error('Mojang has no Minecraft version ' + id);
@@ -81,6 +83,7 @@ function normalizeArguments(v) {
 
 /** Loads a version by id (a local profile such as Fabric's, or a vanilla version) with its parents merged. */
 async function loadVersion(root, id) {
+  versionId(id); // also every inheritsFrom on the way down (AUDIT M3)
   const local = path.join(root, 'versions', id, id + '.json');
   const data = normalizeArguments(fs.existsSync(local) ? JSON.parse(fs.readFileSync(local, 'utf8')) : await fetchVanilla(root, id));
   if (!data.inheritsFrom) return data;
@@ -159,7 +162,7 @@ async function installWith(root, id, log, cache) {
   let done = 0;
   const classpath = [];
   await pool(wanted, 12, async (f) => {
-    const dest = path.join(libsDir, f.path);
+    const dest = inside(libsDir, f.path); // the path comes from the version JSON (AUDIT M3)
     // Fabric's profile lists no hash for a few of its own libraries: the maven server publishes a .sha1 next to each file.
     // Already checked against that .sha1 before and unchanged since: no need to ask the server again.
     if (!f.sha1 && !f.sha512) f.sha1 = cache.known(dest, 'sha1') || await fetchSha1(f.url + '.sha1');
@@ -167,16 +170,17 @@ async function installWith(root, id, log, cache) {
     if (f.natives) extractNatives(dest, nativesDir);
     if (++done % 25 === 0) log('libraries ' + done + '/' + wanted.length);
   });
-  for (const f of wanted) { const p = path.join(libsDir, f.path); if (!f.onlyNatives && !classpath.includes(p)) classpath.push(p); }
+  for (const f of wanted) { const p = inside(libsDir, f.path); if (!f.onlyNatives && !classpath.includes(p)) classpath.push(p); }
   log('libraries ok (' + wanted.length + ')');
 
   const ai = v.assetIndex;
-  const indexFile = path.join(root, 'assets', 'indexes', ai.id + '.json');
+  const indexFile = path.join(root, 'assets', 'indexes', versionId(ai.id) + '.json');
   await download(ai.url, indexFile, { sha1: ai.sha1, cache });
   const objects = Object.values(JSON.parse(fs.readFileSync(indexFile, 'utf8')).objects);
   const unique = [...new Map(objects.map((o) => [o.hash, o])).values()];
   let got = 0;
   await pool(unique, 24, async (o) => {
+    if (!/^[0-9a-f]{40}$/.test(String(o.hash))) throw new Error('Refused an asset with a bad hash in the index');
     const dir = o.hash.slice(0, 2);
     await download(ASSET_HOST + dir + '/' + o.hash, path.join(root, 'assets', 'objects', dir, o.hash), { sha1: o.hash, cache });
     if (++got % 500 === 0) log('assets ' + got + '/' + unique.length);
@@ -186,7 +190,7 @@ async function installWith(root, id, log, cache) {
   let logConfig = null;
   const lc = v.logging && v.logging.client;
   if (lc && lc.file) {
-    logConfig = { file: path.join(root, 'assets', 'log_configs', lc.file.id), argument: lc.argument };
+    logConfig = { file: inside(path.join(root, 'assets', 'log_configs'), path.basename(String(lc.file.id))), argument: lc.argument };
     await download(lc.file.url, logConfig.file, { sha1: lc.file.sha1, cache });
   }
   return { version: v, classpath, clientJar, nativesDir, assetsDir: path.join(root, 'assets'), assetIndexId: ai.id, logConfig, mc };
