@@ -626,7 +626,7 @@ function startApp(opts = {}) {
       settings.set({ selectedInstance: inst.id });
       return { created: inst.id };
     }));
-    handle('instances:update', (id, patch) => instanceReply(() => { store.update(String(id), { name: patch.name, ram: patch.ram }); }));
+    handle('instances:update', (id, patch) => instanceReply(() => { const p = patch && typeof patch === 'object' ? patch : {}; store.update(String(id), { name: p.name, ram: p.ram }); }));
     handle('instances:duplicate', (id) => instanceReply(() => {
       const copy = store.duplicate(String(id));
       copyInstanceDir(rootDir(), String(id), copy.id);
@@ -845,8 +845,12 @@ function startApp(opts = {}) {
     handle('accounts:list', () => auth.listAccounts());
     handle('accounts:add', () => addAccount());
     handle('accounts:cancel', () => { if (signIn) signIn.cancelled = true; send('accounts:result', { ok: false, cancelled: true }); return true; });
-    handle('accounts:select', (id) => { auth.select(id); return auth.listAccounts(); });
-    handle('accounts:remove', (id) => { auth.remove(id); return auth.listAccounts(); });
+    // An answer, never a thrown error (AUDIT L4): the page shows the message and the list as it is.
+    const accountsReply = (fn) => {
+      try { fn(); return auth.listAccounts(); } catch (e) { return { message: describe(e, 'UNKNOWN').message, accounts: auth.listAccounts() }; }
+    };
+    handle('accounts:select', (id) => accountsReply(() => auth.select(id)));
+    handle('accounts:remove', (id) => accountsReply(() => auth.remove(id)));
     handle('accounts:head', (uuid) => headOf(String(uuid)));
     handle('settings:get', () => settings.get());
     handle('settings:set', (patch) => {

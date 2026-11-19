@@ -18,6 +18,13 @@ const gb = (mb) => (mb / 1024).toFixed(2).replace(/\.?0+$/, '') + ' GB';
 const instance = () => appState.instances.find((i) => i.id === appState.selected) || appState.instances[0];
 const selectedAccount = () => (appState.accounts || []).find((a) => a.selected) || null;
 
+/** The account list from main; when something went wrong it also carries a message to show. */
+function accountsAnswer(r) {
+  if (Array.isArray(r)) return r;
+  if (r && r.message) toast(r.message);
+  return (r && r.accounts) || [];
+}
+
 /** Puts text into a fixed element; a name (isName) is marked never to translate, our own text is translated. */
 function setNameText(node, text, isName) {
   if (isName) node.dataset.raw = ''; else delete node.dataset.raw;
@@ -613,11 +620,11 @@ function renderAccounts(list) {
     if (a.selected) card.append(el('span', 'badge', 'Playing as'));
     else {
       const use = el('button', 'pill', 'Use');
-      use.addEventListener('click', async () => renderAccounts(await api.accounts.select(a.id)));
+      use.addEventListener('click', async () => renderAccounts(accountsAnswer(await api.accounts.select(a.id))));
       card.append(use);
     }
     const rm = el('button', 'pill danger', 'Remove');
-    rm.addEventListener('click', async () => renderAccounts(await api.accounts.remove(a.id)));
+    rm.addEventListener('click', async () => renderAccounts(accountsAnswer(await api.accounts.remove(a.id))));
     card.append(rm);
     host.append(card);
   }

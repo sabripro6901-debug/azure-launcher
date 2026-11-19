@@ -246,3 +246,12 @@ test('M13: the instance in use (not the one selected now) can never be deleted w
   assert.ok(!/selectedInstance\(\)\.id === String\(id\)/.test(del), 'no longer compares with the selected instance');
   assert.match(src, /if \(next === 'idle'\) runningId = null;/);
 });
+
+test('L4: account and instance edits answer with a message instead of throwing', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'app.js'), 'utf8');
+  assert.match(src, /handle\('accounts:select', \(id\) => accountsReply\(/);
+  assert.match(src, /handle\('accounts:remove', \(id\) => accountsReply\(/);
+  assert.match(src, /const accountsReply = \(fn\) => \{\s*try \{ fn\(\); return auth\.listAccounts\(\); \} catch \(e\) \{ return \{ message:/);
+  assert.match(src, /const p = patch && typeof patch === 'object' \? patch : \{\};/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', 'renderer.js'), 'utf8'), /renderAccounts\(accountsAnswer\(await api\.accounts\.select/);
+});
