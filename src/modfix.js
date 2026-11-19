@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { satisfies } = require('./modcheck');
 const { bestVersion, fileOf, FABRIC_API_ID } = require('./modrinth');
+const { writeJsonAtomic } = require('./atomic');
 
 const JOURNAL = path.join('.azure-launcher', 'modfix.json');
 const SAFE_FILE = /^[^\\/:*?"<>|]+\.jar$/i;
@@ -26,7 +27,7 @@ function writeJournal(gameDir, j) {
   const f = path.join(gameDir, JOURNAL);
   fs.mkdirSync(path.dirname(f), { recursive: true });
   j.sessions = j.sessions.slice(-20);
-  fs.writeFileSync(f, JSON.stringify(j, null, 2));
+  writeJsonAtomic(f, j);
 }
 
 function note(gameDir, session, step) {

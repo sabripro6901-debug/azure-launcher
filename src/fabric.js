@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { getJson } = require('./net');
+const { writeJsonAtomic } = require('./atomic');
 
 async function ensureFabricProfile(root, mcVersion, loaderVersion) {
   const url = 'https://meta.fabricmc.net/v2/versions/loader/' + mcVersion + '/' + loaderVersion + '/profile/json';
@@ -10,7 +11,7 @@ async function ensureFabricProfile(root, mcVersion, loaderVersion) {
   const id = profile.id; // fabric-loader-<loader>-<mc>
   const file = path.join(root, 'versions', id, id + '.json');
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(profile, null, 2));
+  writeJsonAtomic(file, profile);
   return id;
 }
 
