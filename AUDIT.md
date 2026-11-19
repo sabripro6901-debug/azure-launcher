@@ -68,7 +68,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* changing the folder while a game starts mixes two folders; after changing it, all worlds and mods "disappear" (they are still in the old folder).
   *Fix:* refuse the change while not idle; ask "Move everything to the new folder?" (copy, check, then switch) or keep the old one.
 
-- [ ] **M10. Big modpacks are read into memory twice.** `src/mrpack.js:42` and `:96` read the whole pack (up to 400 MB) once to parse and again for overrides.
+- [x] **M10. Big modpacks are read into memory twice.** *(Done: `src/zipfile.js` reads only the zip directory, the pack description and each override file from disk, each inflated with a hard cap at its stated size (a file lying about its size is refused); the whole pack is never loaded. `test/mrpack.test.js`.)* `src/mrpack.js:42` and `:96` read the whole pack (up to 400 MB) once to parse and again for overrides.
   *Player:* importing a large pack can freeze or crash the launcher on a PC with little memory.
   *Fix:* read the zip's central directory and inflate only the needed entries (fflate's streaming `Unzip`), one pass.
 

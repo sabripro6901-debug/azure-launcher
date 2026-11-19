@@ -5,7 +5,8 @@
 // and nothing in it is ever run. The Azure jar is never part of an export (the launcher adds it by itself).
 const fs = require('node:fs');
 const path = require('node:path');
-const { unzipSync, zipSync } = require('fflate');
+const { zipSync } = require('fflate');
+const { openZip } = require('./zipfile');
 const { download } = require('./net');
 const { AZURE_JAR } = require('./content');
 
@@ -39,18 +40,21 @@ function safeRel(p) {
 function readIndexFrom(file) {
   const size = fs.statSync(file).size;
   if (size > MAX_ZIP) throw new PackError('TOO_BIG', 'This pack is too large.');
-  const data = new Uint8Array(fs.readFileSync(file));
-  let raw;
+  // Only the pack's description is read from the file, not the whole pack (AUDIT M10).
+  let zip, raw;
   try {
-    const got = unzipSync(data, { filter: (f) => f.name === INDEX && f.originalSize <= MAX_INDEX });
-    raw = got[INDEX];
+    zip = openZip(file);
+    const e = zip.entries.find((x) => x.name === INDEX && x.size <= MAX_INDEX);
+    raw = e ? zip.read(e) : null;
   } catch {
     throw new PackError('BAD_PACK', 'This file is not a valid .mrpack.');
+  } finally {
+    if (zip) zip.close();
   }
   if (!raw) throw new PackError('BAD_PACK', 'This file is not a valid .mrpack (no modrinth.index.json).');
   let index;
-  try { index = JSON.parse(Buffer.from(raw).toString('utf8')); } catch { throw new PackError('BAD_PACK', 'The pack description is damaged.'); }
-  return { index, data };
+  try { index = JSON.parse(raw.toString('utf8')); } catch { throw new PackError('BAD_PACK', 'The pack description is damaged.'); }
+  return { index };
 }
 
 /** Checks a pack's description and returns what it contains. Nothing is downloaded or written. */
@@ -93,24 +97,30 @@ function packFabricApi(pack) {
 
 /** The override files inside the pack (overrides/ and client-overrides/), checked and ready to write. */
 function readOverrides(file) {
-  const data = new Uint8Array(fs.readFileSync(file));
   let total = 0;
   const out = [];
   const skipped = [];
-  const got = unzipSync(data, {
-    filter: (f) => {
+  // Only the override files are read from the pack, one by one, each capped at its stated size (AUDIT M10).
+  let zip;
+  try {
+    zip = openZip(file);
+  } catch {
+    throw new PackError('BAD_PACK', 'This file is not a valid .mrpack.');
+  }
+  try {
+    for (const f of zip.entries) {
       const m = /^(client-)?overrides\/(.+)$/.exec(f.name);
-      if (!m || f.name.endsWith('/')) return false;
+      if (!m || f.name.endsWith('/')) continue;
       const rel = safeRel(m[2]);
-      if (!rel || RISKY.test(rel) || !TOP_DIRS.includes(rel.split('/')[0]) && !['options.txt', 'servers.dat'].includes(rel)) { skipped.push({ path: m[2].slice(0, 80), reason: 'not allowed' }); return false; }
-      if (rel.startsWith('mods/') && (AZURE_JAR.test(path.posix.basename(rel)) || /^fabric-api-/i.test(path.posix.basename(rel)))) { skipped.push({ path: rel, reason: 'Azure Client and Fabric API are managed by the launcher' }); return false; }
-      if (f.originalSize > MAX_OVERRIDE_FILE || (total += f.originalSize) > MAX_OVERRIDES_TOTAL) throw new PackError('TOO_BIG', 'The pack carries too much extra data.');
-      return true;
-    },
-  });
-  for (const [name, bytes] of Object.entries(got)) {
-    const m = /^(client-)?overrides\/(.+)$/.exec(name);
-    out.push({ rel: safeRel(m[2]), bytes, client: !!m[1] });
+      if (!rel || RISKY.test(rel) || !TOP_DIRS.includes(rel.split('/')[0]) && !['options.txt', 'servers.dat'].includes(rel)) { skipped.push({ path: m[2].slice(0, 80), reason: 'not allowed' }); continue; }
+      if (rel.startsWith('mods/') && (AZURE_JAR.test(path.posix.basename(rel)) || /^fabric-api-/i.test(path.posix.basename(rel)))) { skipped.push({ path: rel, reason: 'Azure Client and Fabric API are managed by the launcher' }); continue; }
+      if (f.size > MAX_OVERRIDE_FILE || (total += f.size) > MAX_OVERRIDES_TOTAL) throw new PackError('TOO_BIG', 'The pack carries too much extra data.');
+      let bytes;
+      try { bytes = new Uint8Array(zip.read(f)); } catch { throw new PackError('BAD_PACK', 'A file inside the pack is damaged.'); }
+      out.push({ rel, bytes, client: !!m[1] });
+    }
+  } finally {
+    zip.close();
   }
   out.sort((a, b) => Number(a.client) - Number(b.client)); // client overrides win
   return { overrides: out, skipped };
