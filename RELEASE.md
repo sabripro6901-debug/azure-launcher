@@ -88,4 +88,6 @@ installer, checks what is inside the app, and uploads the installer as a build a
 
 - Code signing (removes the SmartScreen warning): buy a certificate, then add it as a GitHub secret of **this** repo only and tell electron-builder to use it. Not needed for a first release.
 - Next launcher release: bump `version`, tag, push the tag, download the artifact, sign it (`node tools/sign-update.js sign <folder>`), attach the five files. Installed launchers pick it up on their own, check the signature, and install it when closed.
+- Azure (mod) versions only go up: launchers ignore a signed list that offers an older Azure than the one installed
+  (so an old list can't be replayed). To undo a bad release, publish the good jar again under a higher version.
 - Next Azure (mod) release: step 1 only. Launchers fetch the new Legit jar from the signed channel at launch.

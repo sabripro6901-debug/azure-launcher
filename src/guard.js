@@ -42,6 +42,7 @@ const OWN_SOUNDS = new Map([
 const ARCHIVE = /\.(zip|mrpack|jar)$/i;
 const MAX_JAR = 200 * 1024 * 1024;
 const MAX_ENTRIES = 50000;
+const MAX_ENTRY = 64 * 1024 * 1024; // unpacked size of one file
 const MAX_DEPTH = 3;
 
 function bannedByHash(name) {
@@ -102,7 +103,14 @@ function checkLegitJar(jarPath) {
     // the Azure jar is a few MB: anything much bigger, or with a huge number of files, is not ours (AUDIT L10)
     if (fs.statSync(jarPath).size > MAX_JAR) return ['jar is too large to be the Azure Client'];
     let count = 0;
-    files = unzipSync(new Uint8Array(fs.readFileSync(jarPath)), { filter: () => ++count <= MAX_ENTRIES });
+    let huge = null;
+    files = unzipSync(new Uint8Array(fs.readFileSync(jarPath)), {
+      filter: (f) => {
+        if (f.originalSize > MAX_ENTRY) { huge = f.name; return false; }
+        return ++count <= MAX_ENTRIES;
+      },
+    });
+    if (huge) return ['a file in the jar is too large to be part of the Azure Client: ' + huge];
     if (count > MAX_ENTRIES) return ['jar has too many files to be the Azure Client'];
   } catch (e) {
     return ['not a readable jar: ' + e.message];
