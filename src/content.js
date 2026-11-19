@@ -9,6 +9,7 @@ const path = require('node:path');
 const { download } = require('./net');
 const { bestVersion, fileOf, FABRIC_API_ID } = require('./modrinth');
 const { readModInfo, readPackInfo } = require('./modmeta');
+const { writeJsonAtomic, setAsideBroken } = require('./atomic');
 
 const KINDS = {
   mod: { dir: 'mods', ext: '.jar', label: 'mod' },
@@ -51,13 +52,14 @@ class Content {
       const m = JSON.parse(fs.readFileSync(this.manifestPath, 'utf8'));
       return m && typeof m.items === 'object' ? m : { items: {} };
     } catch {
+      setAsideBroken(this.manifestPath); // missing, or damaged: kept aside, never overwritten
       return { items: {} };
     }
   }
 
   save() {
     fs.mkdirSync(path.dirname(this.manifestPath), { recursive: true });
-    fs.writeFileSync(this.manifestPath, JSON.stringify(this.manifest, null, 2));
+    writeJsonAtomic(this.manifestPath, this.manifest);
   }
 
   /** The loader Modrinth searches use for this instance (mods only). */

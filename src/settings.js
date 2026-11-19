@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { writeJsonAtomic, setAsideBroken } = require('./atomic');
 
 /** 4 GB on a PC with 16 GB or more (Windows reports a "16 GB" PC as about 15.9), otherwise 2 GB. */
 function defaultRam(totalBytes = os.totalmem()) {
@@ -50,7 +51,7 @@ class SettingsStore {
   constructor(file) {
     this.file = file;
     let saved = {};
-    try { saved = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* first run */ }
+    try { saved = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { setAsideBroken(file); /* first run, or damaged: kept aside */ }
     this.data = validate(saved);
   }
 
@@ -59,7 +60,7 @@ class SettingsStore {
   set(patch) {
     this.data = validate(patch, this.data);
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    fs.writeFileSync(this.file, JSON.stringify(this.data, null, 2));
+    writeJsonAtomic(this.file, this.data);
     return this.get();
   }
 }

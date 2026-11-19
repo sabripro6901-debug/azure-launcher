@@ -5,6 +5,7 @@
 // rolled back. Only ever touches the instance's mods folder and its .azure-launcher folder.
 const fs = require('node:fs');
 const path = require('node:path');
+const { writeJsonAtomic } = require('./atomic');
 
 const DIR = '.azure-launcher';
 const SAFE = /^[^/\\:*?"<>|\x00-\x1f]{1,180}\.jar$/i;
@@ -123,9 +124,9 @@ function apply(gameDir, modsDir) {
       failed.push(describe(e) + ': ' + err.message);
     }
   }
-  fs.writeFileSync(path.join(rollback, 'undo.json'), JSON.stringify({ undo: undoSteps, entries: list }, null, 2));
+  writeJsonAtomic(path.join(rollback, 'undo.json'), { undo: undoSteps, entries: list });
   write(gameDir, []);
-  fs.writeFileSync(path.join(dirOf(gameDir), 'applied.json'), JSON.stringify({ at: new Date().toISOString(), done, failed }, null, 2));
+  writeJsonAtomic(path.join(dirOf(gameDir), 'applied.json'), { at: new Date().toISOString(), done, failed });
   return { done, failed, entries: list, rollback };
 }
 

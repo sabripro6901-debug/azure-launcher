@@ -5,6 +5,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { writeJsonAtomic, setAsideBroken } = require('./atomic');
 
 const RAM_MIN = 1024;
 const RAM_MAX = 32768;
@@ -49,7 +50,11 @@ class InstanceStore {
   constructor(file, seed) {
     this.file = file;
     let saved = null;
-    try { saved = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* first run */ }
+    try {
+      saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch {
+      setAsideBroken(file); // first run, or a damaged file: kept as instances.json.broken-<time>, never overwritten
+    }
     this.items = Array.isArray(saved && saved.instances) ? saved.instances.filter((i) => i && /^[a-z0-9-]{1,40}$/.test(i.id)) : [];
     if (this.items.length === 0 && seed) {
       this.items = [{ id: 'default', ram: null, lastPlayed: null, created: new Date().toISOString(), ...seed }];
@@ -58,8 +63,7 @@ class InstanceStore {
   }
 
   #save() {
-    fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    fs.writeFileSync(this.file, JSON.stringify({ instances: this.items }, null, 2));
+    writeJsonAtomic(this.file, { instances: this.items });
   }
 
   list() { return this.items.map((i) => ({ ...i })); }
