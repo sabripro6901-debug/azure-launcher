@@ -65,3 +65,9 @@ test('L1: an older signed release list never replaces the installed Azure; versi
   assert.match(r.fallback, /older than the installed 1\.2\.21/);
   assert.ok(!fs.existsSync(path.join(dir, 'azure-client-legit-1.2.9.jar')));
 });
+
+test('L2: a damaged fabric.mod.json is refused, not a crash', () => {
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'azure-guard-')), 'bad.jar');
+  fs.writeFileSync(f, zipSync({ 'fabric.mod.json': strToU8('{"id": "aur') }));
+  assert.deepStrictEqual(checkLegitJar(f), ['fabric.mod.json is not valid JSON']);
+});

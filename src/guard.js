@@ -106,10 +106,13 @@ function checkLegitJar(jarPath) {
   if (!metaRaw) {
     problems.push('no fabric.mod.json');
   } else {
-    const meta = JSON.parse(Buffer.from(metaRaw).toString('utf8'));
+    let meta;
+    try { meta = JSON.parse(Buffer.from(metaRaw).toString('utf8')); } catch { meta = null; }
+    // a damaged fabric.mod.json is a refused jar, not a crash of the check (AUDIT L2)
+    if (!meta || typeof meta !== 'object') { problems.push('fabric.mod.json is not valid JSON'); return problems; }
     if (meta.id !== 'aurora') problems.push('mod id is ' + JSON.stringify(meta.id) + ', expected "aurora"');
     if (meta.jars && meta.jars.length) problems.push('fabric.mod.json lists nested jars');
-    for (const m of meta.mixins || []) {
+    for (const m of Array.isArray(meta.mixins) ? meta.mixins : []) {
       const cfg = typeof m === 'string' ? m : m && m.config;
       if (!ALLOWED_MIXINS.has(String(cfg))) problems.push('fabric.mod.json lists a mixin config that is not allowed: ' + cfg);
     }
