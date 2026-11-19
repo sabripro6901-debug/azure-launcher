@@ -4,7 +4,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { app, BrowserWindow, ipcMain, shell, safeStorage, dialog, clipboard, session, nativeImage, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, safeStorage, dialog, clipboard, session, nativeImage, nativeTheme, Tray, Menu } = require('electron');
+const { createBackground } = require('./background');
 const { SettingsStore, splitArgs } = require('../src/settings');
 const { Vault, electronCipher } = require('../src/vault');
 const { createAuthService, AuthError, isConfigured } = require('../src/auth');
@@ -41,17 +42,18 @@ function startApp(opts = {}) {
     app.quit();
     return;
   }
-  app.on('second-instance', () => {
-    if (!win || win.isDestroyed()) return;
-    if (win.isMinimized()) win.restore();
-    win.show();
-    win.focus();
-  });
+  app.on('second-instance', () => background.showWindow());
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'launcher.config.json'), 'utf8'));
   const releaseKey = fs.readFileSync(path.join(__dirname, '..', 'config', 'release-key.txt'), 'utf8');
   const updateKeyFile = path.join(__dirname, '..', 'config', 'launcher-update-key.txt');
   const updateKey = fs.existsSync(updateKeyFile) ? fs.readFileSync(updateKeyFile, 'utf8') : ''; // none: every update is refused
   let win = null;
+  // Closing the window during a game keeps the launcher in the tray until the game ends (AUDIT M5).
+  const background = createBackground({
+    Tray, Menu, nativeImage, iconPath: path.join(__dirname, 'renderer', 'icon.png'),
+    getWin: () => win, isBusy: () => state !== 'idle' || !!child, quit: () => app.quit(),
+    onFirstHide: (tray) => { if (tray.displayBalloon) tray.displayBalloon({ title: 'Azure Launcher', content: 'The game keeps running. The launcher closes by itself when the game ends.' }); },
+  });
   let settings;
   let auth;
   let store;
@@ -295,7 +297,7 @@ function startApp(opts = {}) {
       store.update(inst.id, { lastPlayed: new Date().toISOString() });
       setState('running');
       send('launch:event', { type: 'status', text: 'Playing', progress: null });
-      if (s.closeOnLaunch && win) win.hide();
+      if (s.closeOnLaunch && win) { win.hide(); background.onHiddenForGame(); }
       if (pendingTiming) {
         // Quick restart timings, reported once the game says it is up again.
         const t = { ...pendingTiming, applyMs, prepareMs: startedAt - pendingTiming.exitAt - applyMs };
@@ -340,18 +342,18 @@ function startApp(opts = {}) {
       // Fabric refused this set of mods: explain it with the same screen instead of only "the game closed".
       const refusal = code !== 0 && !wasStopped && inst.loader ? modcheck.fabricRefusal(recent) : null;
       if (refusal) {
-        if (win) win.show();
+        if (!background.onGameDone() && win) win.show();
         setState('idle');
         send('launch:event', { type: 'modproblems', report: await modReport(inst, { fabric: refusal, fromCrash: true }) });
         return { ok: false, modProblems: true };
       }
-      if (win) win.show();
+      if (!background.onGameDone() && win) win.show();
       setState('idle');
       send('launch:event', { type: 'exit', code, stopped: wasStopped });
       return { ok: true };
     } catch (e) {
       child = null;
-      if (win) win.show();
+      if (!background.onGameDone() && win) win.show();
       setState('idle');
       if (e && e.code === 'MOD_PROBLEMS') {
         send('launch:event', { type: 'modproblems', report: await modReport(inst, {}) });
@@ -866,6 +868,7 @@ function startApp(opts = {}) {
       return { action: 'deny' };
     });
     win.webContents.on('will-navigate', (e) => e.preventDefault());
+    win.on('close', (e) => background.onWindowClose(e));
     win.loadFile(RENDERER);
     return win;
   }
