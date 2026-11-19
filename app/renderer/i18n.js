@@ -287,6 +287,7 @@ const FR = {
   'Sign-in was cancelled or timed out. Try again.': 'La connexion a été annulée ou a expiré. Réessayez.',
   "Can't reach Microsoft or Minecraft. Check your internet connection.": 'Microsoft ou Minecraft est injoignable. Vérifiez votre connexion internet.',
   "The game couldn't start.": 'Le jeu n’a pas pu démarrer.',
+  "Windows couldn't open your saved sign-in on this PC (its secure storage isn't available). Restart the PC and open the launcher again; if it keeps happening, sign in again.": 'Windows n’a pas pu ouvrir votre connexion enregistrée sur ce PC (son stockage sécurisé est indisponible). Redémarrez le PC et rouvrez le launcher ; si cela continue, reconnectez-vous.',
   'There isn\'t enough free space on the disk. Free up some space (a few GB), then press Play again.': 'Il n’y a pas assez d’espace libre sur le disque. Libérez de la place (quelques Go), puis cliquez de nouveau sur Jouer.',
   'A game file is in use by another program (often the game itself, or a virus scanner). Close the game, wait a moment, then press Play again.': 'Un fichier du jeu est utilisé par un autre programme (souvent le jeu lui-même ou un antivirus). Fermez le jeu, attendez un instant, puis cliquez de nouveau sur Jouer.',
   "Azure Launcher isn't allowed to write to the game folder. Choose another game folder in Settings, or check the folder's permissions.": 'Azure Launcher n’a pas le droit d’écrire dans le dossier du jeu. Choisissez un autre dossier dans Paramètres, ou vérifiez les autorisations du dossier.',

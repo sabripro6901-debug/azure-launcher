@@ -224,3 +224,18 @@ test('each sign-in step is logged by name, with no tokens or codes', async () =>
   assert.match(text, /FAILED: XSTS token/);
   assert.ok(!text.includes(TOKEN));
 });
+
+test('M11: when Windows secure storage fails, the account list is empty with a reason, not an error', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-auth-'));
+  new Vault(dir, fakeCipher).set('accounts', { accounts: [{ id: 'a', name: 'Steve' }], selected: 'a' });
+  const broken = { isAvailable: () => false, encrypt: () => { throw new Error('no'); }, decrypt: () => { throw new Error('no'); } };
+  const auth = createAuthService({ config: { azureClientId: PLACEHOLDER }, vault: new Vault(dir, broken), Authflow: class {}, fetchFn: async () => ({}) });
+  assert.deepStrictEqual(auth.listAccounts(), []);
+  assert.strictEqual(auth.storageProblem(), 'SECURE_STORAGE');
+  const ok = createAuthService({ config: { azureClientId: PLACEHOLDER }, vault: new Vault(dir, fakeCipher), Authflow: class {}, fetchFn: async () => ({}) });
+  assert.strictEqual(ok.listAccounts().length, 1);
+  assert.strictEqual(ok.storageProblem(), null);
+  const { playerMessage } = require('../app/messages');
+  assert.match(playerMessage('SECURE_STORAGE'), /secure storage/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'app', 'app.js'), 'utf8'), /storageProblem: auth\.storageProblem\(\)/);
+});

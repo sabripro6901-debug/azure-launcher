@@ -11,6 +11,7 @@ const TEXT = {
   SIGN_IN_CANCELLED: 'Sign-in was cancelled or timed out. Try again.',
   NETWORK: "Can't reach Microsoft or Minecraft. Check your internet connection.",
   LAUNCH_FAILED: "The game couldn't start.",
+  SECURE_STORAGE: "Windows couldn't open your saved sign-in on this PC (its secure storage isn't available). Restart the PC and open the launcher again; if it keeps happening, sign in again.",
   DISK_FULL: "There isn't enough free space on the disk. Free up some space (a few GB), then press Play again.",
   FILE_IN_USE: 'A game file is in use by another program (often the game itself, or a virus scanner). Close the game, wait a moment, then press Play again.',
   NO_PERMISSION: "Azure Launcher isn't allowed to write to the game folder. Choose another game folder in Settings, or check the folder's permissions.",

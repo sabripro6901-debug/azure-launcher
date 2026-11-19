@@ -743,6 +743,7 @@ function startHero() {
   startHero();
   showUpdate(await api.update.state());
   if (appState.justUpdated && typeof toast === 'function') toast('Launcher updated to ' + appState.justUpdated.to + '.');
+  if (appState.storageProblem && typeof toast === 'function') toast(appState.storageProblem);
 })();
 
 
