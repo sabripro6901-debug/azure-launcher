@@ -2,6 +2,7 @@
 // A small Modrinth API client (the only content source: no CurseForge). It sends a proper User-Agent, keeps requests
 // one at a time, and respects the rate limit: it waits when the limit is nearly used up and on a 429 answer.
 const { userAgent } = require('./version');
+const { fetchWithTimeout } = require('./net');
 
 const API = 'https://api.modrinth.com/v2';
 const SORTS = new Set(['relevance', 'downloads', 'follows', 'newest', 'updated']);
@@ -20,7 +21,7 @@ class ModrinthError extends Error {
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class ModrinthClient {
-  constructor({ fetchFn = fetch, base = API, sleep = sleepMs, maxWaitMs = 20000 } = {}) {
+  constructor({ fetchFn = fetchWithTimeout, base = API, sleep = sleepMs, maxWaitMs = 20000 } = {}) {
     this.fetchFn = fetchFn;
     this.base = base;
     this.sleep = sleep;
