@@ -114,6 +114,9 @@ function dedupeLibraries(libs) {
   const seen = new Set();
   const out = [];
   for (const lib of libs) {
+    // Rules first: 1.14-1.16 list LWJGL twice, an older one for macOS only and a newer one for everyone else. Keeping
+    // the first one seen and dropping it later for the OS lost GLFW on Windows (found by a real 1.16.5 launch, AUDIT M12).
+    if (!ruleAllows(lib.rules)) continue;
     const [g, a, , c] = lib.name.split('@')[0].split(':');
     // old versions list a library twice: once for the jar, once (with "natives") for its per-OS native files; both are needed
     const key = g + ':' + a + ':' + (c || '') + (lib.natives ? ':natives' : '');
