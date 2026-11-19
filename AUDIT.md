@@ -56,7 +56,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
   *Player:* with a game of the same version still open (or an antivirus holding a DLL) the start fails with a generic "The game couldn't start."
   *Fix:* extract only missing or changed files; skip files that are in use when they are already identical.
 
-- [ ] **M7. Install errors all say "The game couldn't start."** `app/messages.js:13`, `app/app.js:68-73`: disk full (`ENOSPC`), file in use (`EBUSY`/`EPERM`), no internet during install, Mojang down: the same text.
+- [x] **M7. Install errors all say "The game couldn't start."** *(Done: `classify()` in `app/messages.js` gives a clear reason and what to do: disk full, file in use, no permission, download not finished, damaged download, servers down, version unavailable; anything else keeps the old text and the log link. `test/app.test.js`.)* `app/messages.js:13`, `app/app.js:68-73`: disk full (`ENOSPC`), file in use (`EBUSY`/`EPERM`), no internet during install, Mojang down: the same text.
   *Player:* no idea what to do.
   *Fix:* map these codes to clear messages ("Your disk is full…", "Close the game or program using … and try again", "Can't reach Mojang…").
 

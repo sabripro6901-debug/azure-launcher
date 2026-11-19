@@ -203,3 +203,25 @@ test('only one launcher runs at a time; starting it again shows the open window 
   const second = src.slice(src.indexOf("app.on('second-instance'"), src.indexOf("app.on('second-instance'") + 300);
   assert.match(second, /background\.showWindow\(\)/); // shows, restores and focuses it (test/background.test.js)
 });
+
+test('M7: install and start errors get a clear reason, not only "The game couldn\'t start."', () => {
+  const { classify, playerMessage } = require('../app/messages');
+  const err = (message, code) => Object.assign(new Error(message), code ? { code } : {});
+  const cases = [
+    [err('ENOSPC: no space left on device, write', 'ENOSPC'), 'DISK_FULL'],
+    [err("EBUSY: resource busy or locked, open 'lwjgl.dll'", 'EBUSY'), 'FILE_IN_USE'],
+    [err("EPERM: operation not permitted, rename 'a' -> 'b'", 'EPERM'), 'NO_PERMISSION'],
+    [err('Wrong sha1 for https://libraries.minecraft.net/x.jar'), 'DOWNLOAD_DAMAGED'],
+    [err('HTTP 503 for https://piston-meta.mojang.com/x'), 'SERVER_DOWN'],
+    [err('Mojang has no Minecraft version 1.99'), 'VERSION_UNAVAILABLE'],
+    [err('Download stalled for 60 s: https://x'), 'DOWNLOAD_FAILED'],
+    [err('fetch failed'), 'DOWNLOAD_FAILED'],
+    [err('something nobody expected'), 'LAUNCH_FAILED'],
+  ];
+  for (const [e, want] of cases) {
+    assert.strictEqual(classify(e, 'LAUNCH_FAILED'), want, e.message);
+    assert.notStrictEqual(playerMessage(want), playerMessage('UNKNOWN'), want + ' has its own text');
+  }
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'app.js'), 'utf8');
+  assert.match(src, /: classify\(e, fallback\);/, 'describe() uses it');
+});
