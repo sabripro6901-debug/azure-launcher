@@ -88,7 +88,7 @@ Each item: what it is · where · how bad · how a player notices · planned fix
 
 - [x] **L2. A damaged `fabric.mod.json` crashes the guard.** *(Done: refused as "not valid JSON". `test/guard.test.js`.)* `src/guard.js:80` (`JSON.parse` without try): callers catch it today, but the guard should answer with a problem, not throw.
 
-- [ ] **L3. Half downloads are left behind.** `src/net.js:49-50`: when the stream fails, `dest.part` is not removed (it is overwritten on the next try).
+- [x] **L3. Half downloads are left behind.** *(Done: a download that fails for good removes its `.part` file. `test/net.test.js`.)* `src/net.js:49-50`: when the stream fails, `dest.part` is not removed (it is overwritten on the next try).
 
 - [ ] **L4. Some IPC handlers throw instead of answering.** `app/app.js:813-814` (`accounts:select`/`remove` with an unknown id), `:595` (`instances:update` without a patch).
   *Player:* a rare "Error invoking remote method" in the console; the click does nothing.
