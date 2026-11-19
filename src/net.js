@@ -128,9 +128,10 @@ async function download(url, dest, { sha1, sha256, sha512, tries = 3, fetchFn = 
       return true;
     } catch (e) {
       last = e;
-      await new Promise((res) => setTimeout(res, 700 * (i + 1)));
+      if (i < tries - 1) await new Promise((res) => setTimeout(res, 700 * (i + 1)));
     }
   }
+  fs.rmSync(tmp, { force: true }); // no half download left behind (AUDIT L3)
   throw last;
 }
 

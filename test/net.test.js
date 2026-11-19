@@ -98,3 +98,13 @@ test('M2: a file checked once is not read again on the next start while unchange
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('L3: a download that fails for good leaves no .part file', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-net-'));
+  const dest = path.join(dir, 'f.bin');
+  // sends some bytes, then the connection breaks
+  const breaks = async () => ({ ok: true, status: 200, body: new ReadableStream({ start(c) { c.enqueue(new Uint8Array([1, 2, 3])); c.error(new Error('ECONNRESET')); } }) });
+  await assert.rejects(net.download('https://example.invalid/f.bin', dest, { tries: 2, fetchFn: breaks }));
+  assert.deepStrictEqual(fs.readdirSync(dir), []);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
