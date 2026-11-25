@@ -25,6 +25,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><g class="needle"><path d="M15.6 8.4 13.3 13.3 8.4 15.6 10.7 10.7z"/></g></svg>
         <span>Browse</span>
       </button>
+      <button class="nav" data-page="bedrock">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 21 7.6v8.8l-9 4.8-9-4.8V7.6z"/><path d="M8 9.6h8v6.4H8z"/></svg>
+        <span>Bedrock</span>
+      </button>
       <button class="nav" data-page="settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
         <span>Settings</span>
@@ -105,6 +109,31 @@
       </div>
     </section>
 
+    <section class="page hidden" id="page-bedrock">
+      <header><h1>Bedrock</h1><select id="bd-profile" class="hidden" aria-label="Minecraft folder"></select></header>
+      <div class="card empty hidden" id="bd-missing">
+        <div class="empty-title">Minecraft Bedrock is not installed</div>
+        <p class="muted">Azure Launcher starts the Bedrock Edition you already own and manages its packs and worlds. It does not download or install the game.</p>
+        <div class="row center"><button class="pill accent" id="bd-get">Get it from Microsoft</button><button class="pill" id="bd-recheck">Check again</button></div>
+      </div>
+      <div class="card bd-busy hidden" id="bd-busy"><div class="rbody"><span class="rtitle" id="bd-busy-label">Working…</span><div class="bd-bar"><span id="bd-busy-fill"></span></div></div><span class="muted" id="bd-busy-pct" data-raw></span></div>
+      <div class="card note hidden" id="bd-running">Minecraft Bedrock is running. Close it to change packs or worlds.</div>
+      <div class="card bd-game hidden" id="bd-game">
+        <div class="rbody"><div class="rtitle">Minecraft Bedrock</div><div class="tags" id="bd-tags"></div></div>
+        <button class="pill accent" id="bd-play">Play Bedrock</button>
+      </div>
+      <div class="tabs hidden" id="bd-tabs"><button class="tab on" id="bd-tab-packs">Packs</button><button class="tab" id="bd-tab-worlds">Worlds</button></div>
+      <div id="bd-packs" class="hidden">
+        <div class="toolbar"><button class="pill accent" id="bd-add-packs">Add packs</button><button class="pill" id="bd-open-packs">Open folder</button></div>
+        <div class="dropzone" id="bd-drop">Drop .mcpack, .mcaddon or .zip files here. They are copied; your originals stay where they are.</div>
+        <div class="rlist" id="bd-pack-list"></div>
+      </div>
+      <div id="bd-worlds" class="hidden">
+        <div class="toolbar"><button class="pill accent" id="bd-add-world">Add a world</button><button class="pill" id="bd-open-worlds">Open folder</button><button class="pill" id="bd-open-backups">Open backups</button></div>
+        <div class="rlist" id="bd-world-list"></div>
+      </div>
+    </section>
+
     <section class="page hidden" id="page-settings">
       <header><h1>Settings</h1></header>
       <div class="card form">
@@ -128,6 +157,11 @@
           <span class="cap">Language</span>
           <select id="set-lang"><option value="system">Same as Windows</option><option value="en">English</option><option value="fr">Français</option></select>
           <span class="hint">Language of the launcher. "Same as Windows" follows your system language.</span>
+        </div>
+        <div class="field">
+          <span class="cap">Bedrock backups to keep</span>
+          <select id="set-bd-keep"><option value="0">Keep all</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option></select>
+          <span class="hint">For each Bedrock world, the newest backups are kept and older ones are deleted when a new one is made. The backup just made is never deleted. "Keep all" deletes nothing.</span>
         </div>
         <div class="field" id="upd-field">
           <span class="cap">Launcher updates</span>
@@ -175,5 +209,6 @@
 <script src="renderer.js"></script>
 <script src="instance.js"></script>
 <script src="modcheck.js"></script>
+<script src="bedrock.js"></script>
 </body>
 </html>

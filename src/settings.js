@@ -20,6 +20,7 @@ function defaults() {
     openLogOnLaunch: false,  // open the logs drawer when the game starts
     selectedInstance: 'default',
     autoUpdateLauncher: true, // launcher updates install themselves when nothing is running
+    bedrockKeepBackups: 5,   // backups kept per Bedrock world (older ones are deleted when a new one is made); 0 = keep all
     language: 'system',      // 'system' (follows Windows), 'en' or 'fr' (AUDIT M8)
   };
 }
@@ -45,6 +46,7 @@ function validate(input, base = defaults()) {
   if (typeof i.closeOnLaunch === 'boolean') s.closeOnLaunch = i.closeOnLaunch;
   if (typeof i.openLogOnLaunch === 'boolean') s.openLogOnLaunch = i.openLogOnLaunch;
   if (typeof i.autoUpdateLauncher === 'boolean') s.autoUpdateLauncher = i.autoUpdateLauncher;
+  if (Number.isInteger(i.bedrockKeepBackups) && i.bedrockKeepBackups >= 0 && i.bedrockKeepBackups <= 100) s.bedrockKeepBackups = i.bedrockKeepBackups;
   if (['system', 'en', 'fr'].includes(i.language)) s.language = i.language;
   if (typeof i.selectedInstance === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(i.selectedInstance)) s.selectedInstance = i.selectedInstance;
   return s;

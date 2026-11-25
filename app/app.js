@@ -29,6 +29,7 @@ const { devOptions } = require('./devgate');
 const { createSelfUpdater } = require('../src/selfupdate');
 const { verifyLauncherUpdate } = require('../src/updatesig');
 const { playerMessage, pointsToLogs, classify } = require('./messages');
+const { registerBedrock } = require('./bedrock-ipc');
 
 const RENDERER = path.join(__dirname, 'renderer', 'index.html');
 const MAX_LOG_LINE = 2000;
@@ -885,6 +886,7 @@ function startApp(opts = {}) {
       if (!fs.existsSync(file)) return false;
       return (await shell.openPath(file)) === '';
     });
+    registerBedrock({ text: mainText, handle, dialog, shell, getWin: () => win, userData: app.getPath('userData'), answer, logLine, send, getSettings: () => settings.get() });
     handle('app:copy', (text) => { clipboard.writeText(String(text).slice(0, 200)); return true; });
   }
 

@@ -102,6 +102,8 @@ class InstanceStore {
     if ('name' in patch) i.name = this.#uniqueName(cleanName(patch.name), id);
     if ('ram' in patch) i.ram = cleanRam(patch.ram);
     if ('lastPlayed' in patch) i.lastPlayed = patch.lastPlayed;
+    // the mod check's "Use Fabric Loader x.y.z" fix (and its undo); only for Fabric instances, only a real version number
+    if ('loaderVersion' in patch && i.loader && /^\d+\.\d+\.\d+$/.test(String(patch.loaderVersion))) i.loaderVersion = String(patch.loaderVersion);
     if ('playTime' in patch) i.playTime = Math.max(0, Math.round(Number(patch.playTime) || 0)); // milliseconds played in total
     if ('icon' in patch) i.icon = patch.icon === 'icon.png' ? 'icon.png' : null; // a picture in the instance folder, or the default
     this.#save();

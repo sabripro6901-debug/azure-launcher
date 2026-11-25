@@ -1,27 +1,25 @@
 'use strict';
 // The launcher only ever installs the public Azure Client. This is the same check as the mod repo's own jar check: a
 // jar with any file that is not part of the public edition is refused before it reaches the mods folder.
-// Banned files are listed by their SHA-256 only.
+// It knows only the folders and root files of the public jar (guard-allow.json,
+// written from a checked public jar by the mod repo's tools/sync_launcher_guard.py) and refuses any entry outside them.
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const { unzipSync } = require('fflate');
 
-const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const path = require('node:path');
 
-// Exact file names that never belong in the public jar (by hash).
-const BANNED_NAME_HASHES = new Set([
-  '61bf0a374a394a93e0d12bef13c93ee968ec0f88c9a8722d22788ba07078a3cb',
-  'd99e4add9758bf4512d753d469b9fd15d42ed6b879fd72452d2a65b5e12c002d',
-  '5e119e926f3fe79c52a6c582e732bd403de56a18c45b32038c02d675b4d5c927',
-  'c523af42095219ef61dcd4ad2bec4386498623299ac725d67cf5fd0ebc5d58b4',
-  '97bcfa9e3c9d3cadf4ead167e35566db2209097f20b54d241138f0dea566790d',
-  '704c1c8a5ee4c5fb3a165e1e64ef4287bf3c9d8ff415fda0ed27cb578620185e',
-  'd09c2fad8dcc4abd6b9f80e06cb987864f70699914325ac5a88b320caf392089',
-]);
-// Folders that never belong in the public jar (by hash of the folder path, ending in "/").
-const BANNED_DIR_HASHES = new Set(['1ad0a2472df23792595d5b5bcfe411834d076deaae80f5f340d7db3d852a41d9']);
-// Words that never appear in any file of the public jar (by hash of the lower-case word).
-const BANNED_WORD_HASHES = new Set(['2ad8c3004ffd703d45c1bd8c3e83cb6fc602b86bf20a56522c3107a0ebb50e6a']);
+// What a public jar is made of: its folders and its files at the top level. Anything else is refused.
+const ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'guard-allow.json'), 'utf8'));
+const ALLOWED_DIRS = new Set(ALLOW.dirs);
+const ALLOWED_ROOT = new Set(ALLOW.root);
+
+/** True if this entry of the jar itself (not of an archive inside it) is outside the public jar's folders. */
+function notAllowed(name) {
+  const i = name.endsWith('/') ? name.length - 1 : name.lastIndexOf('/') + 0;
+  if (name.endsWith('/')) return !ALLOWED_DIRS.has(name);
+  return i < 0 ? !ALLOWED_ROOT.has(name) : !ALLOWED_DIRS.has(name.slice(0, i + 1));
+}
 
 // Lyrics (and everything that contacts the lyrics service) is not in the public edition (licensing not clear yet).
 // The Music Player (MusicHud, NowPlaying, CoverArt) is allowed: it only reads the PC's now-playing session.
@@ -45,27 +43,6 @@ const MAX_ENTRIES = 50000;
 const MAX_ENTRY = 64 * 1024 * 1024; // unpacked size of one file
 const MAX_DEPTH = 3;
 
-function bannedByHash(name) {
-  if (BANNED_NAME_HASHES.has(sha(name))) return true;
-  for (let i = name.indexOf('/'); i !== -1; i = name.indexOf('/', i + 1)) {
-    if (BANNED_DIR_HASHES.has(sha(name.slice(0, i + 1)))) return true;
-  }
-  return false;
-}
-
-/** True if the text holds a banned word (letters only, 5 to 16 long, compared by hash). */
-function hasBannedWord(text, seen) {
-  const re = /[a-z]{5,16}/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const w = m[0];
-    if (seen.has(w)) continue;
-    seen.add(w);
-    if (BANNED_WORD_HASHES.has(sha(w))) return true;
-  }
-  return false;
-}
-
 function checkSound(name, data, where) {
   const want = OWN_SOUNDS.get(name);
   if (!want) return 'sound not on the own-sounds list: ' + where + name;
@@ -76,7 +53,8 @@ function checkSound(name, data, where) {
 /** Checks every file of an opened zip; archives inside (.zip, .mrpack, .jar) are opened and checked the same way. */
 function checkEntries(files, where, depth, problems, seen) {
   for (const [name, data] of Object.entries(files)) {
-    if (bannedByHash(name) || BANNED_NAMES.has(name) || BANNED_PREFIXES.some((p) => name.startsWith(p))) problems.push('banned file: ' + where + name);
+    if (BANNED_NAMES.has(name) || BANNED_PREFIXES.some((p) => name.startsWith(p))) problems.push('banned file: ' + where + name);
+    if (depth === 0 && notAllowed(name)) problems.push('not part of the public edition: ' + name);
     if (name.endsWith('/')) continue;
     if (/\.ogg$/i.test(name)) {
       const bad = checkSound(name, data, where);
@@ -90,7 +68,6 @@ function checkEntries(files, where, depth, problems, seen) {
       continue;
     }
     const text = Buffer.from(data).toString('latin1').toLowerCase();
-    if (hasBannedWord(text, seen)) problems.push('banned text in: ' + where + name);
     if (text.includes('lrclib')) problems.push("text 'lrclib' (the lyrics service) in: " + where + name);
   }
 }

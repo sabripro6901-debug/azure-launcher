@@ -229,3 +229,21 @@ test('version list: the newest release for this Minecraft and loader is "best"; 
   const packs = rankVersions([v('p1', 'release', '2025-01-01', ['1.20.1']), v('p2', 'release', '2026-01-01', ['1.21.4']), v('p3', 'beta', '2026-06-01', ['1.21.4'])], { loader: 'fabric' });
   assert.deepStrictEqual(packs.filter((x) => x.best).map((x) => x.id), ['p2']);
 });
+
+test('the content lists read the folder again each time a page opens (files added or removed outside the launcher)', () => {
+  const dir = tmp();
+  fs.mkdirSync(path.join(dir, 'mods'));
+  fs.writeFileSync(path.join(dir, 'mods', 'first.jar'), 'x');
+  const c = new Content({ gameDir: dir, instance: { mcVersion: '1.21.11', loader: 'fabric', mods: [] }, client: {} });
+  assert.deepStrictEqual(c.list().mod.map((m) => m.base), ['first.jar']);
+  fs.writeFileSync(path.join(dir, 'mods', 'added-outside.jar'), 'x');
+  fs.rmSync(path.join(dir, 'mods', 'first.jar'));
+  assert.deepStrictEqual(c.list().mod.map((m) => m.base), ['added-outside.jar'], 'list() reads the folder on every call');
+  // and the pages ask for it again when they open, instead of keeping the first list
+  const src = (f) => fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', f), 'utf8');
+  const shown = src('content.js').split('function onPageShown(page) {')[1].split('\n}\n')[0];
+  assert.match(shown, /st\.items = null;[^\n]*\n\s*loadInstalled\(kind\);/, 'Mods / Resource packs / Shaders pages forget the old list on open');
+  const inst = src('instance.js');
+  assert.match(inst.split('function onInstancePageShown(page) {')[1].split('\n}\n')[0], /ip\.items = null;/, 'the instance page forgets the old list on open');
+  assert.match(inst, /if \(id === 'content'\) ip\.items = null;/, 'the Content tab forgets the old list when clicked');
+});

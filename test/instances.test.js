@@ -120,3 +120,13 @@ test('old version JSONs (a single minecraftArguments string) become argument lis
   const modern = normalizeArguments({ arguments: { jvm: ['a'], game: ['b'] } });
   assert.deepStrictEqual(modern.arguments, { jvm: ['a'], game: ['b'] });
 });
+
+test('the mod check can change a Fabric instance\'s loader version (the "Use Fabric Loader" fix used to do nothing)', () => {
+  const dir = tmp();
+  const store = new InstanceStore(path.join(dir, 'i.json'), SEED);
+  assert.strictEqual(store.update('default', { loaderVersion: '0.20.1' }).loaderVersion, '0.20.1');
+  assert.strictEqual(new InstanceStore(path.join(dir, 'i.json'), SEED).get('default').loaderVersion, '0.20.1', 'saved');
+  assert.strictEqual(store.update('default', { loaderVersion: '../evil' }).loaderVersion, '0.20.1', 'only a version number');
+  const v = store.create({ name: 'Plain', mcVersion: '1.12.2', loaderVersion: null });
+  assert.strictEqual(store.update(v.id, { loaderVersion: '0.20.1' }).loaderVersion, null, 'a vanilla instance gets no loader this way');
+});

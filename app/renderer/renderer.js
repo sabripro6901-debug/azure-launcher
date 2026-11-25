@@ -7,6 +7,8 @@ let appState = null;
 let codeInfo = null;
 const headUrls = new Map();
 
+// true while the Home page is set to play Minecraft Bedrock instead of a Java instance (bedrock.js owns the rest)
+var homeBedrock = false;
 const SIGNIN_OFF = "Sign-in isn't available yet.";
 
 // What the launch is doing, from the launcher's progress messages.
@@ -56,6 +58,7 @@ function navigate(page) {
   $('side-account').classList.toggle('active', page === 'accounts');
   if (typeof onPageShown === 'function') onPageShown(page);
   if (typeof onInstancePageShown === 'function') onInstancePageShown(page);
+  if (typeof onBedrockPageShown === 'function') onBedrockPageShown(page);
 }
 // Test hooks for the dev screenshot scripts: only defined in a dev run (never in the packaged launcher).
 function installTestHooks() {
@@ -126,6 +129,7 @@ function renderHome() {
   $('dev-badge').classList.toggle('hidden', !appState.dev);
   $('dev-badge-side').classList.toggle('hidden', !appState.dev);
 
+  if (homeBedrock && typeof renderHomeBedrock === 'function' && renderHomeBedrock()) return;
   const btn = $('launch');
   const label = $('launch-label');
   const fill = $('launch-fill');
@@ -194,6 +198,7 @@ function noteProgress(text) {
 }
 
 $('launch').addEventListener('click', async () => {
+  if (homeBedrock) { bedrockHomePlay(); return; }
   if (!selectedAccount()) { navigate('accounts'); return; }
   resetRun();
   renderHome();
@@ -209,10 +214,11 @@ function renderPicker() {
   const menu = $('picker-menu');
   menu.replaceChildren();
   for (const i of appState.instances) {
-    const b = rawEl('button', i.id === appState.selected ? 'on' : '', i.name);
-    b.addEventListener('click', async () => { menu.classList.add('hidden'); await applyInstances(await api.instances.select(i.id)); });
+    const b = rawEl('button', i.id === appState.selected && !homeBedrock ? 'on' : '', i.name);
+    b.addEventListener('click', async () => { menu.classList.add('hidden'); if (homeBedrock) bedrockHomeOff(); await applyInstances(await api.instances.select(i.id)); });
     menu.append(b);
   }
+  if (typeof bedrockPickerItem === 'function') bedrockPickerItem(menu);
 }
 $('picker').addEventListener('click', (e) => {
   e.stopPropagation();
@@ -297,6 +303,7 @@ function closeMenus() { document.querySelectorAll('.card .menu').forEach((m) => 
 document.addEventListener('click', closeMenus);
 
 async function playInstance(i) {
+  if (homeBedrock) bedrockHomeOff();
   await applyInstances(await api.instances.select(i.id));
   navigate('home');
   if (!selectedAccount()) { navigate('accounts'); return; }
@@ -314,6 +321,7 @@ function renderInstances() {
     const card = el('div', 'card instance' + (i.id === appState.selected ? ' selected' : ''));
     card.addEventListener('click', async (e) => {
       if (e.target.closest('button, .menu')) return;
+      if (homeBedrock) bedrockHomeOff();
       if (i.id !== appState.selected) await applyInstances(await api.instances.select(i.id));
     });
     const top = el('div', 'top');
@@ -359,6 +367,11 @@ function renderInstances() {
 }
 
 let toastTimer = null;
+/** Good news (not an error): a dialog with its own title and an OK button. */
+function notice(title, text) {
+  openDialog(title, (d) => d.append(el('p', 'muted', text)), [{ label: 'OK', kind: 'accent', run: closeDialog }]);
+}
+
 function toast(text) {
   const note = $('under');
   note.className = 'under error';
@@ -668,6 +681,7 @@ function renderSettings() {
   $('set-autoupd').checked = s.autoUpdateLauncher !== false;
   $('set-log').checked = s.openLogOnLaunch;
   $('set-lang').value = s.language || 'system';
+  $('set-bd-keep').value = String(s.bedrockKeepBackups === undefined ? 5 : s.bedrockKeepBackups);
   setLanguage(s.language || 'system');
 }
 
@@ -688,6 +702,7 @@ $('set-java').addEventListener('change', () => saveSettings({ javaArgs: $('set-j
 $('set-close').addEventListener('change', () => saveSettings({ closeOnLaunch: $('set-close').checked }));
 $('set-autoupd').addEventListener('change', () => saveSettings({ autoUpdateLauncher: $('set-autoupd').checked }));
 $('set-log').addEventListener('change', () => saveSettings({ openLogOnLaunch: $('set-log').checked }));
+$('set-bd-keep').addEventListener('change', () => saveSettings({ bedrockKeepBackups: Number($('set-bd-keep').value) }));
 $('set-lang').addEventListener('change', () => saveSettings({ language: $('set-lang').value }));
 function renderAbout() {
   const a = appState.about || {};
@@ -749,7 +764,7 @@ function startHero() {
   navigate('home');
   startHero();
   showUpdate(await api.update.state());
-  if (appState.justUpdated && typeof toast === 'function') toast('Launcher updated to ' + appState.justUpdated.to + '.');
+  if (appState.justUpdated) notice('Launcher updated', 'Azure Launcher is now version ' + appState.justUpdated.to + '.');
   if (appState.storageProblem && typeof toast === 'function') toast(appState.storageProblem);
 })();
 

@@ -8,6 +8,15 @@ It installs Minecraft, Fabric and Azure Client for you, keeps Azure Client and y
 | --- | --- | --- |
 | ![Home page: the Launch button and the selected instance](docs/launcher-home.webp) | ![Instances page with an Azure Client instance](docs/launcher-instances.webp) | ![Mods page, browsing Modrinth](docs/launcher-mods.webp) |
 
+## Bedrock tab
+
+Separate from the Java launcher: the **Bedrock** page starts Minecraft Bedrock Edition (Windows) if you already own it, and manages your own packs and worlds. It never injects code, edits game files, or downloads or switches Bedrock builds, and there is no sign-in in the launcher (the game asks for that itself).
+
+- Finds the game (current layout since 1.21.120, older layout if present) and the com.mojang folder of each Xbox user, plus Shared.
+- Packs: add .mcpack, .mcaddon or .zip (button or drag and drop); the manifest is read (name, version, icon, UUID); duplicates and packs for a newer game are flagged; files are copied, never moved. Anything a pack does not normally hold (.dll, .exe, scripts of other kinds) is refused.
+- Worlds: list, back up to .mcworld, restore (a backup of the current world is made first), export and import.
+- Nothing changes while Bedrock is running.
+
 ## What you need
 
 - **Windows 10 or 11 (64-bit).** There is no Mac or Linux version yet.

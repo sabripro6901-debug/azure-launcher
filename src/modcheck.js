@@ -44,7 +44,7 @@ function satisfies(spec, version) {
     const m = /^(>=|<=|>|<|=|~|\^)?\s*(.+)$/.exec(term.trim());
     if (!m) return null;
     const op = m[1] || '=';
-    const v = m[2].trim();
+    const v = m[2].trim().replace(/\+.*$/, ''); // build metadata (+1.21.x) never counts, as in Fabric
     if (v === '*' || /^[xX]$/.test(v)) return true;
     if (/(^|\.)[xX*](\.|$)/.test(v)) {
       const parts = v.split('.');

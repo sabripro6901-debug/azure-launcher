@@ -148,6 +148,7 @@ function onPageShown(page) {
   st.browse.classList.toggle('disabled', off);
   st.tabBrowse.disabled = off;
   if (off) { setTab(kind, 'installed'); } else if (!st.hits.length && st.tab === 'browse') { loadCategories(kind); runSearch(kind, true); }
+  st.items = null; // read the folder again: files may have been added or removed outside the launcher
   loadInstalled(kind);
 }
 

@@ -76,7 +76,7 @@ function channel(files, keyPair, { badSig = false } = {}) {
 }
 
 function jarBytes(extra = {}) {
-  const entries = { 'fabric.mod.json': new TextEncoder().encode(JSON.stringify({ id: 'aurora' })), 'a.class': new TextEncoder().encode('x') };
+  const entries = { 'fabric.mod.json': new TextEncoder().encode(JSON.stringify({ id: 'aurora' })), 'com/aurora/client/A.class': new TextEncoder().encode('x') };
   for (const [k, v] of Object.entries(extra)) entries[k] = new TextEncoder().encode(v);
   return Buffer.from(zipSync(entries));
 }
@@ -111,7 +111,7 @@ test('signed channel: a good release is downloaded, checked and kept; bad ones a
   assert.match(wrongHash.result.message, /Wrong sha256/);
   assert.deepStrictEqual(fs.readdirSync(wrongHash.dir), []);
 
-  const other = await run({ jar: jarBytes({ [Buffer.from('Y29tL2F1cm9yYS9jbGllbnQvbW9kdWxlL0Jhbm5lZEEuY2xhc3M=', 'base64').toString()]: 'x' }) });
+  const other = await run({ jar: jarBytes({ 'some/other/place/Thing.class': 'x' }) });
   assert.match(other.result.message, /not a clean Legit jar/);
   assert.deepStrictEqual(fs.readdirSync(other.dir), []); // the refused jar is deleted
 });
@@ -149,9 +149,9 @@ test('a failed or tampered jar update leaves the working Azure jar in place (and
 
   // every kind of failure falls back to the installed jar, byte for byte unchanged
   const cases = {
-    'forged list': [{ jar: jarBytes({ 'x.txt': 'new' }) }, { badSig: true }],
-    'tampered file (hash differs)': [{ jar: jarBytes({ 'x.txt': 'new' }), sha: 'b'.repeat(64) }, {}],
-    'jar with a banned file': [{ jar: jarBytes({ [Buffer.from('Y29tL2F1cm9yYS9jbGllbnQvbW9kdWxlL0Jhbm5lZEEuY2xhc3M=', 'base64').toString()]: 'x' }) }, {}],
+    'forged list': [{ jar: jarBytes({ 'com/aurora/client/x.txt': 'new' }) }, { badSig: true }],
+    'tampered file (hash differs)': [{ jar: jarBytes({ 'com/aurora/client/x.txt': 'new' }), sha: 'b'.repeat(64) }, {}],
+    'jar with a banned file': [{ jar: jarBytes({ 'some/other/place/Thing.class': 'x' }) }, {}],
   };
   for (const [name, [files, opts]] of Object.entries(cases)) {
     const r = await go(files, opts);
@@ -174,7 +174,7 @@ test('a newer signed jar replaces the old one only after it passed every check',
   const kp = crypto.generateKeyPairSync('ed25519');
   const keyB64 = kp.publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-upd2-'));
-  const jar2 = jarBytes({ 'v.txt': 'two' });
+  const jar2 = jarBytes({ 'com/aurora/client/v.txt': 'two' });
   const latest = JSON.stringify({ version: '10.0.0', legit: { file: 'azure-client-legit-10.0.0.jar', sha256: crypto.createHash('sha256').update(jar2).digest('hex'), size: jar2.length } });
   const sig = crypto.sign(null, Buffer.from(latest), kp.privateKey).toString('base64');
   const server = http.createServer((req, res) => { if (req.url === '/latest.json') res.end(latest); else if (req.url === '/latest.json.sig') res.end(sig); else if (req.url === '/azure-client-legit-10.0.0.jar') res.end(jar2); else { res.statusCode = 404; res.end(); } }).listen(0, '127.0.0.1');
@@ -261,4 +261,13 @@ test('L7: the "Fabric refused" close timer only ever closes the game it was star
   assert.match(src, /setTimeout\(\(\) => \{ if \(thisGame && child === thisGame\) thisGame\.kill\(\); \}, 2500\)/);
   assert.match(src, /child = started\.child;\s*thisGame = child;/);
   assert.ok(!/setTimeout\(\(\) => \{ if \(child\) child\.kill\(\); \}/.test(src));
+});
+
+test('the "launcher updated" note is good news, not shown as an error', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', 'renderer.js'), 'utf8');
+  assert.match(src, /if \(appState\.justUpdated\) notice\('Launcher updated', /);
+  assert.ok(!/justUpdated[^\n]*toast\(/.test(src));
+  const { tr } = require('../app/renderer/i18n');
+  assert.strictEqual(tr('Launcher updated'), 'Launcher mis à jour');
+  assert.strictEqual(tr('Azure Launcher is now version 1.1.1.'), 'Azure Launcher est maintenant en version 1.1.1.');
 });

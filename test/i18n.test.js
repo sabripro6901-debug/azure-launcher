@@ -11,7 +11,7 @@ const { validate } = require('../src/settings');
 const R = (f) => fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', f), 'utf8');
 // Texts that are the same in French (names, units, codes).
 const SAME = new Set(['Azure Launcher', 'Instances', 'Instance', 'Mods', 'Modpacks', 'Shaders', 'Modrinth', 'Version', 'Actions', 'Contact', 'Azure',
-  'Fabric', 'Vanilla', 'Electron', 'Chromium', 'OK', 'Mod', 'Alpha', 'DEV', 'AZURE CLIENT', 'English', 'Français', 'e.g. -XX:+UseZGC', 'mod']);
+  'Fabric', 'Vanilla', 'Bedrock', 'Minecraft Bedrock', 'Packs', 'Pack', 'Electron', 'Chromium', 'OK', 'Mod', 'Alpha', 'DEV', 'AZURE CLIENT', 'English', 'Français', 'e.g. -XX:+UseZGC', 'mod']);
 
 test('every text and hint in the page has a French version', () => {
   const html = R('index.html');

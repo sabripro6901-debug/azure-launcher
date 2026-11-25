@@ -159,3 +159,10 @@ test('fix file names cannot leave the mods folder', async () => {
   await assert.rejects(modfix.applyFix({ action: 'disable' }, 'nope.jar', 's1234567', ctx));
   assert.deepStrictEqual(fs.readdirSync(modsDir).sort(), ['a.jar', 'b.jar']);
 });
+
+test('a version with build metadata (+1.21.x) is compared without it, like Fabric does', () => {
+  const { satisfies } = require('../src/modcheck');
+  assert.strictEqual(satisfies('>=1.0.0+1.21.x', '1.0.0+1.21.x'), true);
+  assert.strictEqual(satisfies('>=1.0.1+1.21.x', '1.0.0+1.21.x'), false);
+  assert.strictEqual(satisfies('1.21.x', '1.21.11'), true);
+});

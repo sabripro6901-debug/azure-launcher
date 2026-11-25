@@ -66,26 +66,21 @@ function makeJar(files) {
 }
 
 // Names of files a public jar must not have, kept encoded.
-const enc = (b64) => Buffer.from(b64, 'base64').toString();
-const BANNED_CLASS = enc('Y29tL2F1cm9yYS9jbGllbnQvbW9kdWxlL0Jhbm5lZEEuY2xhc3M=');
-const OLD_CLASS = enc('Y29tL2F1cm9yYS9jbGllbnQvbW9kdWxlL0Jhbm5lZEIuY2xhc3M=');
-const BANNED_MIXINS = enc('YXVyb3JhLmJhbm5lZC5taXhpbnMuanNvbg==');
-const BANNED_DIR_FILE = enc('Y29tL2F1cm9yYS9jbGllbnQvbWl4aW4vYmFubmVkLw==') + 'A.class';
-const BANNED_ID = enc('YmFubmVkd29yZA==');
-
 test('the Legit guard runs before any jar is installed', () => {
   const game = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-game-'));
-  const legit = makeJar({ 'fabric.mod.json': JSON.stringify({ id: 'aurora', mixins: ['aurora.mixins.json'] }), 'a.class': 'x' });
+  const legit = makeJar({ 'fabric.mod.json': JSON.stringify({ id: 'aurora', mixins: ['aurora.mixins.json'] }), 'com/aurora/client/A.class': 'x' });
   assert.ok(fs.existsSync(installAzureJar(game, legit)));
+  // The guard: a jar is refused for what is not in the public jar's folders,
+  // for another mod id, for a mixin config it does not know and for nested jars.
+  const OK_META = { id: 'aurora', mixins: ['aurora.mixins.json'] };
   const bad = [
-    { 'fabric.mod.json': JSON.stringify({ id: 'aurora' }), [BANNED_CLASS]: 'x' },
-    { 'fabric.mod.json': JSON.stringify({ id: 'aurora' }), [OLD_CLASS]: 'x' },
-    { 'fabric.mod.json': JSON.stringify({ id: 'aurora' }), [BANNED_DIR_FILE]: 'x' },
-    { 'fabric.mod.json': JSON.stringify({ id: BANNED_ID }) },
+    { 'fabric.mod.json': JSON.stringify(OK_META), 'some/other/place/Thing.class': 'x' },
+    { 'fabric.mod.json': JSON.stringify(OK_META), 'com/aurora/client/unknownfolder/Thing.class': 'x' },
+    { 'fabric.mod.json': JSON.stringify(OK_META), 'stray.class': 'x' },
+    { 'fabric.mod.json': JSON.stringify({ id: 'another' }) },
     { 'fabric.mod.json': JSON.stringify({ id: 'aurora', jars: [{ file: 'META-INF/jars/x.jar' }] }) },
-    { 'fabric.mod.json': JSON.stringify({ id: 'aurora' }), 'META-INF/jars/seedcracker.jar': 'x' },
-    { 'fabric.mod.json': JSON.stringify({ id: 'aurora', mixins: ['aurora.mixins.json', BANNED_MIXINS] }), [BANNED_MIXINS]: '{}' },
-    { 'fabric.mod.json': JSON.stringify({ id: 'aurora' }), 'x.class': 'this mentions ' + BANNED_ID.toUpperCase() },
+    { 'fabric.mod.json': JSON.stringify(OK_META), 'META-INF/jars/nested.jar': 'x' },
+    { 'fabric.mod.json': JSON.stringify({ id: 'aurora', mixins: ['aurora.mixins.json', 'aurora.extra.mixins.json'] }), 'aurora.extra.mixins.json': '{}' },
   ];
   const game2 = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-game-'));
   for (const files of bad) {

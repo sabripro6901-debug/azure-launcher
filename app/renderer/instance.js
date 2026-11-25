@@ -100,6 +100,7 @@ function renderRail() {
 
 async function openInstance(id) {
   if (id !== appState.selected) {
+    if (homeBedrock) bedrockHomeOff();
     const r = await applyInstances(await api.instances.select(id));
     if (r && !r.ok) { toast(r.message); return; }
   }
@@ -115,7 +116,10 @@ function initInstancePage() {
 /** Called by navigate(): the sidebar list shows which instance is open. */
 function onInstancePageShown(page) {
   renderRail();
-  if (page === 'instance') renderInstancePage();
+  if (page === 'instance') {
+    ip.items = null; // read the folder again: files may have been added or removed outside the launcher
+    renderInstancePage();
+  }
 }
 
 /** Called by applyInstances(): names, pictures or the selected instance changed. */
@@ -146,7 +150,7 @@ function renderInstancePage() {
   for (const [id, label, icon] of [['content', 'Content', ICONS.compass], ['files', 'Files', ICONS.folder], ['worlds', 'Worlds', ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M3.5 9h17M3.5 15h17', 'M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z']], ['logs', 'Logs', ['M4.5 4.5h15v15h-15z', 'M8 9l3 3-3 3', 'M12.5 15h3.5']]]) {
     const b = el('button', 'itab' + (ip.tab === id ? ' on' : ''));
     b.append(svgIcon(icon), el('span', '', label));
-    b.addEventListener('click', () => { ip.tab = id; renderInstancePage(); });
+    b.addEventListener('click', () => { ip.tab = id; if (id === 'content') ip.items = null; renderInstancePage(); });
     tabs.append(b);
   }
   ipEls.body = el('div', 'ibody');
